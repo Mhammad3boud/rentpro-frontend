@@ -1,0 +1,153 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>Maintenance</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="addMaintenanceTask()">
+        <ion-icon name="add-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="search-filter-section">
+    <ion-searchbar placeholder="Search maintenance tasks..." [(ngModel)]="searchTerm" (ionInput)="filterTasks()"
+      animated="true">
+    </ion-searchbar>
+
+    <div class="filter-chips">
+      <ion-chip [color]="selectedStatus === 'all' ? 'primary' : 'medium'"
+        (click)="selectedStatus = 'all'; filterTasks()">
+        <ion-label>All Status</ion-label>
+      </ion-chip>
+      <ion-chip [color]="selectedStatus === 'pending' ? 'primary' : 'medium'"
+        (click)="selectedStatus = 'pending'; filterTasks()">
+        <ion-label>Pending</ion-label>
+      </ion-chip>
+      <ion-chip [color]="selectedStatus === 'in-progress' ? 'primary' : 'medium'"
+        (click)="selectedStatus = 'in-progress'; filterTasks()">
+        <ion-label>In Progress</ion-label>
+      </ion-chip>
+      <ion-chip [color]="selectedStatus === 'completed' ? 'primary' : 'medium'"
+        (click)="selectedStatus = 'completed'; filterTasks()">
+        <ion-label>Completed</ion-label>
+      </ion-chip>
+    </div>
+
+    <div class="filter-chips">
+      <ion-chip [color]="selectedPriority === 'all' ? 'primary' : 'medium'"
+        (click)="selectedPriority = 'all'; filterTasks()">
+        <ion-label>All Priority</ion-label>
+      </ion-chip>
+      <ion-chip [color]="selectedPriority === 'critical' ? 'danger' : 'medium'"
+        (click)="selectedPriority = 'critical'; filterTasks()">
+        <ion-label>Critical</ion-label>
+      </ion-chip>
+      <ion-chip [color]="selectedPriority === 'high' ? 'warning' : 'medium'"
+        (click)="selectedPriority = 'high'; filterTasks()">
+        <ion-label>High</ion-label>
+      </ion-chip>
+      <ion-chip [color]="selectedPriority === 'medium' ? 'primary' : 'medium'"
+        (click)="selectedPriority = 'medium'; filterTasks()">
+        <ion-label>Medium</ion-label>
+      </ion-chip>
+      <ion-chip [color]="selectedPriority === 'low' ? 'success' : 'medium'"
+        (click)="selectedPriority = 'low'; filterTasks()">
+        <ion-label>Low</ion-label>
+      </ion-chip>
+    </div>
+  </div>
+
+  <div class="tasks-container">
+    <ion-card *ngFor="let task of filteredTasks" class="task-card" [class.overdue]="isOverdue(task)">
+      <ion-card-header>
+        <div class="task-header">
+          <div class="task-title-section">
+            <ion-icon [name]="getCategoryIcon(task.category)" class="category-icon"></ion-icon>
+            <ion-card-title>{{ task.title }}</ion-card-title>
+          </div>
+          <div class="task-badges">
+            <ion-chip [color]="getPriorityColor(task.priority)" size="small">
+              <ion-label>{{ task.priority.toUpperCase() }}</ion-label>
+            </ion-chip>
+            <ion-chip [color]="getStatusColor(task.status)" size="small">
+              <ion-label>{{ task.status.replace('-', ' ').toUpperCase() }}</ion-label>
+            </ion-chip>
+          </div>
+        </div>
+      </ion-card-header>
+
+      <ion-card-content>
+        <p class="task-description">{{ task.description }}</p>
+
+        <div class="task-details">
+          <div class="detail-item">
+            <ion-icon name="home-outline"></ion-icon>
+            <span>{{ task.assetName }}</span>
+          </div>
+
+          <div class="detail-item">
+            <ion-icon name="calendar-outline"></ion-icon>
+            <span>Scheduled: {{ formatDate(task.scheduledDate) }}</span>
+          </div>
+
+          <div class="detail-item" *ngIf="task.assignedTo">
+            <ion-icon name="person-outline"></ion-icon>
+            <span>{{ task.assignedTo }}</span>
+          </div>
+
+          <div class="detail-item" *ngIf="task.estimatedCost">
+            <ion-icon name="cash-outline"></ion-icon>
+            <span>Est. TZS{{ task.estimatedCost }}</span>
+          </div>
+
+          <div class="detail-item" *ngIf="task.actualCost">
+            <ion-icon name="receipt-outline"></ion-icon>
+            <span>Actual TZS{{ task.actualCost }}</span>
+          </div>
+
+          <div class="detail-item" *ngIf="task.recurring">
+            <ion-icon name="repeat-outline"></ion-icon>
+            <span>Recurring: {{ task.recurring.frequency }} (every {{ task.recurring.interval }})</span>
+          </div>
+        </div>
+
+        <div class="task-actions">
+          <ion-button size="small" fill="outline" (click)="updateTaskStatus(task)">
+            <ion-icon name="checkmark-outline" slot="start"></ion-icon>
+            Update Status
+          </ion-button>
+
+          <ion-button size="small" fill="clear" color="success" (click)="quickUpdateStatus(task, 'completed')"
+            *ngIf="task.status !== 'completed'">
+            <ion-icon name="checkmark-done-outline" slot="icon-only"></ion-icon>
+          </ion-button>
+
+          <ion-button size="small" fill="clear" color="warning" (click)="quickUpdateStatus(task, 'in-progress')"
+            *ngIf="task.status === 'pending'">
+            <ion-icon name="play-outline" slot="icon-only"></ion-icon>
+          </ion-button>
+
+          <ion-button size="small" fill="outline" (click)="editTask(task)">
+            <ion-icon name="create-outline" slot="start"></ion-icon>
+            Edit
+          </ion-button>
+
+          <ion-button size="small" fill="clear" color="danger" (click)="deleteTask(task)">
+            <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <div *ngIf="filteredTasks.length === 0" class="empty-state">
+      <ion-icon name="build-outline" class="empty-icon"></ion-icon>
+      <h3>No Maintenance Tasks</h3>
+      <p>Start by adding your first maintenance task</p>
+      <ion-button fill="outline" (click)="addMaintenanceTask()">
+        <ion-icon name="add-outline" slot="start"></ion-icon>
+        Add Task
+      </ion-button>
+    </div>
+  </div>
+</ion-content>

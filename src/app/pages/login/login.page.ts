@@ -22,12 +22,10 @@ export class LoginPage implements OnInit {
   ngOnInit() {}
 
   async login() {
-    // Simple mock validation — replace with real auth later
     if (this.username === 'admin' && this.password === '12345') {
       if (this.rememberMe) {
         localStorage.setItem('rememberUser', this.username);
       }
-      // Navigate to another page (e.g., dashboard)
       this.router.navigate(['/tabs/dashboard']);
     } else {
       const alert = await this.alertController.create({

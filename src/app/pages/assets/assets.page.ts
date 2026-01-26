@@ -174,13 +174,9 @@ export class AssetsPage implements OnInit {
   }
 
   doRefresh(event: any) {
-    // Reset filters to defaults
     this.searchTerm = '';
     this.selectedType = 'all';
-    // In a real app, fetch latest data from backend here
-    // For now, recompute filtered list from current dataset
     this.filteredAssets = [...this.assets];
-    // Small timeout to show refresher UI
     setTimeout(() => {
       this.filterAssets();
       event.target.complete();

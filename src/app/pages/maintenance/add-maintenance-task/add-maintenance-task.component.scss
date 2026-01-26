@@ -1,0 +1,43 @@
+ion-content {
+  --background: var(--ion-background-color);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  
+  ion-button {
+    flex: 1;
+  }
+}
+
+ion-item {
+  --background: var(--ion-item-background);
+  --color: var(--ion-text-color);
+  
+  ion-label {
+    --color: var(--ion-text-color);
+  }
+  
+  ion-input, 
+  ion-textarea, 
+  ion-select, 
+  ion-datetime {
+    --color: var(--ion-text-color);
+  }
+}
+
+ion-select-option {
+  --color: var(--ion-text-color);
+}
+
+@media (max-width: 768px) {
+  .action-buttons {
+    flex-direction: column;
+    
+    ion-button {
+      margin-bottom: 0.5rem;
+    }
+  }
+}

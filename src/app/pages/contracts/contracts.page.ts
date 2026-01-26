@@ -239,7 +239,7 @@ export class ContractsPage implements OnInit {
           'Standard lease terms and conditions apply.',
           '',
           '___________________________           ___________________________',
-          'Landlord Signature                      Tenant Signature',
+          'Landlord Signature                    Tenant Signature',
           '',
           'Date: ____________                      Date: ____________',
         ];

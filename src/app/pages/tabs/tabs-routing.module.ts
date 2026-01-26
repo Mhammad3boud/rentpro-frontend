@@ -33,6 +33,11 @@ const routes: Routes = [
           import('../contracts/contracts.module').then(m => m.ContractsPageModule)
       },
       {
+        path: 'maintenance',
+        loadChildren: () =>
+          import('../maintenance/maintenance.module').then(m => m.MaintenancePageModule)
+      },
+      {
         path: '',
         redirectTo: '/tabs/dashboard',
         pathMatch: 'full'

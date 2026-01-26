@@ -1,7 +1,6 @@
 .contracts-page {
   background: var(--ion-background-color);
 
-  /* HEADER */
   .header-section {
     display: flex;
     justify-content: space-between;
@@ -29,7 +28,6 @@
     }
   }
 
-  /* SEARCH */
   .search-section {
     display: flex;
     align-items: center;
@@ -54,7 +52,6 @@
     }
   }
 
-  /* CARDS */
   ion-card {
     border-radius: 12px;
     box-shadow: 0 1px 4px var(--ion-shadow-color, rgba(0,0,0,0.08));
