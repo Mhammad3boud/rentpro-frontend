@@ -175,7 +175,7 @@ export class ContractsPage implements OnInit {
       message,
       duration: 2000,
       color,
-      position: 'bottom',
+      position: 'top',
     });
     await toast.present();
   }

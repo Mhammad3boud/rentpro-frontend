@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AlertController } from '@ionic/angular';
+import { AuthService } from '../../services/auth.service'; 
 
 @Component({
   selector: 'app-login',
@@ -9,31 +10,31 @@ import { AlertController } from '@ionic/angular';
   standalone: false
 })
 export class LoginPage implements OnInit {
-
-  username: string = '';
-  password: string = '';
-  rememberMe: boolean = false;
+  username = '';
+  password = '';
+  rememberMe = false;
 
   constructor(
     private router: Router,
-    private alertController: AlertController
+    private alertController: AlertController,
+    private authService: AuthService
   ) {}
 
   ngOnInit() {}
 
   async login() {
-    if (this.username === 'admin' && this.password === '12345') {
-      if (this.rememberMe) {
-        localStorage.setItem('rememberUser', this.username);
-      }
-      this.router.navigate(['/tabs/dashboard']);
-    } else {
-      const alert = await this.alertController.create({
-        header: 'Login Failed',
-        message: 'Invalid username or password.',
-        buttons: ['OK']
-      });
-      await alert.present();
-    }
+    this.authService.login(this.username, this.password, this.rememberMe).subscribe({
+      next: async () => {
+        this.router.navigate(['/tabs/dashboard']);
+      },
+      error: async (err: any) => { // ✅ fixes TS7006
+        const alert = await this.alertController.create({
+          header: 'Login Failed',
+          message: err?.error?.message ?? 'Invalid email or password.',
+          buttons: ['OK'],
+        });
+        await alert.present();
+      },
+    });
   }
 }
