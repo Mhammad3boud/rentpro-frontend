@@ -1,12 +1,15 @@
 import { Component, OnInit } from '@angular/core';
 import { ModalController, AlertController, ToastController } from '@ionic/angular';
-import { AddAssetComponent } from './add-asset/add-asset.component';
 import { Location } from '@angular/common';
 import { Router } from '@angular/router';
+
+import { AddAssetComponent } from './add-asset/add-asset.component';
+import { PropertiesService, PropertyDto } from '../../services/properties.service';
 
 interface Asset {
   type: string;
   id: string;
+  name: string;
   location: string;
   owner: string;
   phone: string;
@@ -21,62 +24,115 @@ interface Asset {
   standalone: false,
 })
 export class AssetsPage implements OnInit {
-  assets: Asset[] = [
-    { 
-      type: 'Property',
-      id: 'P-456',
-      location: 'Business District, Downtown',
-      owner: 'John Watson',
-      phone: '+1-555-0123',
-      usage: 'Rented',
-      block: 'A-12/P-456',
-    },
-    {
-      type: 'Farm',
-      id: 'P-789',
-      location: 'Agricultural Zone, Countryside',
-      owner: 'Sarah Johnson',
-      phone: '+1-555-0456',
-      usage: 'Personal Use',
-      block: 'F-08/P-789',
-    },
-    {
-      type: 'Farm',
-      id: 'P-811',
-      location: 'Agricultural Zone, Countryside',
-      owner: 'Mohammed Aboud',
-      phone: '+1-555-0456',
-      usage: 'Business',
-      block: 'F-10/P-811',
-    },
-  ];
 
+  assets: Asset[] = [];
   filteredAssets: Asset[] = [];
   searchTerm = '';
   selectedType = 'all';
 
+  // ✅ Keep latest backend rows so edit uses REAL data (meta, notes, etc.)
+  private propertyById = new Map<number, PropertyDto>();
+
   constructor(
-    private modalCtrl: ModalController,
     private location: Location,
     private router: Router,
     private modalController: ModalController,
     private alertController: AlertController,
     private toastController: ToastController,
-  ) {}
+    private propertiesService: PropertiesService
+  ) { }
 
   ngOnInit() {
-    this.filteredAssets = [...this.assets];
+    this.loadAssets();
   }
 
+  // ---------------- backend loading ----------------
+  private loadAssets() {
+    this.propertiesService.list().subscribe({
+      next: (rows) => {
+        this.propertyById = new Map(rows.map(r => [r.id, r]));
+        this.assets = rows.map((p) => this.mapPropertyToAsset(p));
+        this.filterAssets();
+      },
+      error: () => this.presentToast('Failed to load properties', 'danger'),
+    });
+  }
+
+  // ---------------- mapping: backend dto -> card ----------------
+private mapPropertyToAsset(p: PropertyDto): Asset {
+  const m = (p.meta ?? {}) as Record<string, any>;
+
+  const blockNo = (m['blockNo'] ?? '').toString().trim();
+  const plotNo = (m['plotNo'] ?? '').toString().trim();
+
+  const block = blockNo && plotNo
+    ? `${blockNo}/${plotNo}`
+    : blockNo || plotNo || '';
+
+  return {
+    id: String(p.id),
+
+    name: p.title || block || `Property #${p.id}`,
+    type: (m['assetType'] ?? p.category ?? 'Property').toString(),
+    location: p.address ?? '-',
+    owner: (m['ownerName'] ?? '-').toString(),
+    phone: (m['ownerPhone'] ?? '-').toString(),
+    usage: (m['usage'] ?? '-').toString(),
+    block,
+  };
+}
+
+
+  // optional helper (if you still use it anywhere)
+  private composeBlockFromDto(p: PropertyDto): string {
+    const m = (p.meta ?? {}) as Record<string, any>;
+    const block = String(m['blockNo'] ?? '').trim();
+    const plot = String(m['plotNo'] ?? '').trim();
+    if (block && plot) return `${block}/${plot}`;
+    return block || plot || '';
+  }
+
+  // ---------------- edit ----------------
   async editAsset(asset: Asset) {
+    const dto = this.propertyById.get(Number(asset.id));
+    if (!dto) {
+      this.presentToast('Property not found. Pull to refresh and try again.', 'danger');
+      return;
+    }
+
+    const m = (dto.meta ?? {}) as Record<string, any>;
+
     const componentProps = {
       asset: {
-        assetType: asset.type,
-        ownerName: asset.owner,
-        ownerPhone: asset.phone,
-        usage: asset.usage,
-        // naive parsing for block/plot like "A-12/P-456"
-        ...this.parseBlockToForm(asset.block),
+        assetType: String(m['assetType'] ?? 'Property'),
+
+        region: String(m['region'] ?? ''),
+        district: String(m['district'] ?? ''),
+        ward: String(m['ward'] ?? ''),
+
+        blockNo: String(m['blockNo'] ?? ''),
+        plotNo: String(m['plotNo'] ?? ''),
+        houseNo: String(m['houseNo'] ?? ''),
+        street: String(m['street'] ?? ''),
+        postcode: String(m['postcode'] ?? ''),
+        areaName: String(m['areaName'] ?? ''),
+
+        ownerName: String(m['ownerName'] ?? ''),
+        ownerPhone: String(m['ownerPhone'] ?? ''),
+        ownerEmail: String(m['ownerEmail'] ?? ''),
+
+        usage: String(m['usage'] ?? 'Rented'),
+        waterMeter: String(m['waterMeter'] ?? ''),
+        electricityMeter: String(m['electricityMeter'] ?? ''),
+
+        gpsLatitude: String(m['gpsLatitude'] ?? dto.latitude ?? ''),
+        gpsLongitude: String(m['gpsLongitude'] ?? dto.longitude ?? ''),
+
+        notes: String(dto.notes ?? ''),
+        structureType: String(dto.structureType ?? 'STANDALONE'),
+        unitCount: dto.unitCount ?? 1,
+
+        address: String(dto.address ?? ''),
       },
     } as any;
 
@@ -87,29 +143,28 @@ export class AssetsPage implements OnInit {
       breakpoints: [0, 0.5, 0.9, 1],
       initialBreakpoint: 0.9,
     });
-    await modal.present();
 
+    await modal.present();
     const { data } = await modal.onDidDismiss();
-    if (data) {
-      const updated: Asset = {
-        ...asset,
-        type: data.assetType || asset.type,
-        location: this.composeLocation(data) || asset.location,
-        owner: data.ownerName ?? asset.owner,
-        phone: data.ownerPhone ?? asset.phone,
-        usage: data.usage ?? asset.usage,
-        block: this.composeBlock(data) || asset.block,
-      };
-      this.assets = this.assets.map(a => (a.id === asset.id ? updated : a));
-      this.filterAssets();
-      this.presentToast('Asset updated', 'success');
-    }
+    if (!data) return;
+
+    this.propertiesService.update(Number(asset.id), data).subscribe({
+      next: () => {
+        this.presentToast('Updated', 'success');
+        this.loadAssets(); // ✅ refresh cards from backend
+      },
+      error: (err) => {
+        console.log(err);
+        this.presentToast(err?.error?.message ?? 'Update failed', 'danger');
+      },
+    });
   }
 
+  // ---------------- delete ----------------
   async confirmDelete(asset: Asset) {
     const alert = await this.alertController.create({
-      header: 'Delete Asset',
-      message: `Are you sure you want to delete asset ${asset.id}?`,
+      header: 'Delete Property',
+      message: `Are you sure you want to delete property ${asset.id}?`,
       buttons: [
         { text: 'Cancel', role: 'cancel' },
         { text: 'Delete', role: 'destructive', handler: () => this.deleteAsset(asset) },
@@ -119,100 +174,83 @@ export class AssetsPage implements OnInit {
   }
 
   private deleteAsset(asset: Asset) {
-    this.assets = this.assets.filter(a => a.id !== asset.id);
-    this.filterAssets();
-    this.presentToast('Asset deleted', 'danger');
+    const id = Number(asset.id);
+    this.propertiesService.remove(id).subscribe({
+      next: () => {
+        this.presentToast('Property deleted', 'danger');
+        this.loadAssets();
+      },
+      error: () => this.presentToast('Delete failed', 'danger'),
+    });
   }
 
-  private parseBlockToForm(block: string): { blockNo?: string; plotNo?: string } {
-    if (!block) return {};
-    const parts = block.split('/');
-    if (parts.length === 2) {
-      return { blockNo: parts[0], plotNo: parts[1] };
-    }
-    return { blockNo: block };
+  // ---------------- create ----------------
+  async openAddAssetModal() {
+    const modal = await this.modalController.create({
+      component: AddAssetComponent,
+      cssClass: 'custom-asset-modal',
+      breakpoints: [0, 0.5, 0.9, 1],
+      initialBreakpoint: 0.9,
+    });
+
+    await modal.present();
+    const { data } = await modal.onDidDismiss();
+    if (!data) return;
+
+    this.propertiesService.create(data).subscribe({
+      next: () => {
+        this.presentToast('Property created', 'success');
+        this.loadAssets();
+      },
+      error: () => this.presentToast('Create failed', 'danger'),
+    });
   }
 
+  // ---------------- filtering ----------------
   filterAssets() {
     const term = this.searchTerm.toLowerCase();
+
     this.filteredAssets = this.assets.filter((asset) => {
       const matchesSearch =
         asset.owner.toLowerCase().includes(term) ||
         asset.location.toLowerCase().includes(term) ||
         asset.id.toLowerCase().includes(term);
 
-      const matchesType =
-        this.selectedType === 'all' || asset.type === this.selectedType;
-
+      const matchesType = this.selectedType === 'all' || asset.type === this.selectedType;
       return matchesSearch && matchesType;
     });
-  }
-
-  async openAddAssetModal() {
-    const modal = await this.modalController.create({
-      component: AddAssetComponent,
-      cssClass: 'custom-asset-modal',
-      breakpoints: [0, 0.5, 0.9, 1],
-      initialBreakpoint: 0.9
-    });
-    await modal.present();
-
-    const { data } = await modal.onDidDismiss();
-    if (data) {
-      const newAsset: Asset = {
-        type: data.assetType || 'Property',
-        id: this.generateAssetId(data),
-        location: this.composeLocation(data),
-        owner: data.ownerName || '',
-        phone: data.ownerPhone || '',
-        usage: data.usage || 'Rented',
-        block: this.composeBlock(data),
-      };
-      this.assets = [newAsset, ...this.assets];
-      this.filterAssets();
-    }
   }
 
   doRefresh(event: any) {
     this.searchTerm = '';
     this.selectedType = 'all';
-    this.filteredAssets = [...this.assets];
-    setTimeout(() => {
-      this.filterAssets();
-      event.target.complete();
-    }, 400);
+
+    this.propertiesService.list().subscribe({
+      next: (rows) => {
+        this.propertyById = new Map(rows.map(r => [r.id, r]));
+        this.assets = rows.map((p) => this.mapPropertyToAsset(p));
+        this.filterAssets();
+        event.target.complete();
+      },
+      error: () => {
+        this.presentToast('Refresh failed', 'danger');
+        event.target.complete();
+      },
+    });
   }
 
+  // ---------------- navigation ----------------
   goBack() {
-    if (window.history.length > 1) {
-      this.location.back();
-    } else {
-      this.router.navigate(['/dashboard']);
-    }
+    if (window.history.length > 1) this.location.back();
+    else this.router.navigate(['/dashboard']);
   }
 
-  private generateAssetId(data: any): string {
-    const prefix = (data.assetType || 'Property').startsWith('F') ? 'F' : 'P';
-    const plot = (data.plotNo || '').toString().trim();
-    if (plot) {
-      return `${prefix}-${plot}`;
-    }
-    const tail = Date.now().toString().slice(-3);
-    return `${prefix}-${tail}`;
-  }
-
-  private composeLocation(data: any): string {
-    const parts = [data.areaName, data.street, data.district, data.region]
-      .filter((x: string) => !!x && `${x}`.trim().length)
-      .map((x: string) => `${x}`.trim());
-    return parts.join(', ');
-  }
-
-  private composeBlock(data: any): string {
-    const block = (data.blockNo || '').toString().trim();
-    const plot = (data.plotNo || '').toString().trim();
-    if (block && plot) return `${block}/${plot}`;
-    return block || plot || '';
+  // ---------------- ui helpers ----------------
+  private parseBlockToForm(block: string): { blockNo?: string; plotNo?: string } {
+    if (!block) return {};
+    const parts = block.split('/');
+    if (parts.length === 2) return { blockNo: parts[0], plotNo: parts[1] };
+    return { blockNo: block };
   }
 
   private async presentToast(message: string, color: 'success' | 'danger' | 'primary' | 'medium') {
@@ -220,7 +258,7 @@ export class AssetsPage implements OnInit {
       message,
       duration: 2000,
       color,
-      position: 'bottom',
+      position: 'top',
     });
     await toast.present();
   }

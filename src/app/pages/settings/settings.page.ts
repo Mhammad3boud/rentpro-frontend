@@ -191,7 +191,7 @@ export class SettingsPage {
       message: message,
       duration: 3000,
       color: color,
-      position: 'bottom'
+      position: 'top'
     });
     await toast.present();
   }
