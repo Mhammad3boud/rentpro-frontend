@@ -1,0 +1,332 @@
+.tabs-page {
+  --background: var(--ion-background-color);
+  position: relative;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 280px;
+  background: var(--ion-background-color);
+  border-right: 1px solid var(--ion-border-color);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: none;
+  will-change: transform;
+
+  // Platform-specific behaviors
+  &.desktop {
+    transform: translateX(0);
+    width: 280px;
+    
+    &.sidebar-closed {
+      transform: translateX(-100%);
+    }
+  }
+
+  &.tablet {
+    transform: translateX(-100%);
+    width: 260px;
+    
+    &.sidebar-open {
+      transform: translateX(0);
+    }
+  }
+
+  &.mobile {
+    transform: translateX(-100%);
+    width: 240px;
+    
+    &.sidebar-open {
+      transform: translateX(0);
+    }
+  }
+}
+
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  
+  &::ng-host .sidebar-open + & {
+    opacity: 1;
+  }
+}
+
+.sidebar-header {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 70px;
+  background: transparent;
+  border-bottom: 1px solid var(--ion-border-color);
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    ion-icon {
+      font-size: 1.5rem;
+      color: var(--ion-color-primary);
+    }
+    .logo-text {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--ion-text-color);
+    }
+  }
+  .close-button {
+    --padding-start: 0.5rem;
+    --padding-end: 0.5rem;
+    --background-hover: var(--ion-item-background);
+    ion-icon {
+      font-size: 1.25rem;
+    }
+  }
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 1rem 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  .nav-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    position: relative;
+    color: var(--ion-text-color);
+    border-radius: 8px;
+    margin: 0 0.5rem 0.25rem 0.5rem;
+    &:hover {
+      background: var(--ion-item-background);
+      color: var(--ion-color-primary);
+    }
+    &.active {
+      background: var(--ion-item-background);
+      color: var(--ion-color-primary);
+      font-weight: 600;
+      box-shadow: none;
+      ion-icon {
+        color: var(--ion-color-primary);
+      }
+    }
+    ion-icon {
+      font-size: 1.25rem;
+      margin-right: 1rem;
+      flex-shrink: 0;
+      color: var(--ion-color-medium);
+    }
+    .nav-label {
+      flex: 1;
+      font-weight: 500;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .nav-badge {
+      margin-left: auto;
+      --padding-start: 0.25rem;
+      --padding-end: 0.25rem;
+      --padding-top: 0.125rem;
+      --padding-bottom: 0.125rem;
+      font-size: 0.75rem;
+      min-width: 20px;
+    }
+  }
+}
+
+.sidebar-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--ion-border-color);
+  margin-top: auto;
+  background: transparent;
+  .footer-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.2s, color 0.2s;
+    color: var(--ion-color-medium);
+    &:hover {
+      background: var(--ion-item-background);
+      color: var(--ion-color-primary);
+    }
+    ion-icon {
+      font-size: 1.25rem;
+      margin-right: 1rem;
+      color: var(--ion-color-medium);
+    }
+    .nav-label {
+      font-weight: 500;
+    }
+  }
+}
+
+.main-content {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 100vh;
+  
+  &.desktop {
+    margin-left: 280px;
+    
+    &.sidebar-closed {
+      margin-left: 0;
+    }
+  }
+  
+  &.tablet {
+    margin-left: 0;
+  }
+  
+  &.mobile {
+    margin-left: 0;
+  }
+}
+
+.mobile-menu-button {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1001;
+  --padding-start: 0.5rem;
+  --padding-end: 0.5rem;
+  --padding-top: 0.5rem;
+  --padding-bottom: 0.5rem;
+  --background-hover: var(--ion-color-light, #f2f2f2);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  
+  ion-icon {
+    font-size: 1.5rem;
+  }
+}
+
+.swipe-area {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 100vh;
+  z-index: 998;
+  background: transparent;
+}
+
+// Platform-specific adjustments
+@media (max-width: 480px) {
+  .sidebar {
+    width: 100%;
+    max-width: 280px;
+  }
+  
+  .mobile-menu-button {
+    top: 0.75rem;
+    left: 0.75rem;
+  }
+  
+  .sidebar-header {
+    padding: 1rem 1.25rem;
+  }
+  
+  .sidebar-nav .nav-item {
+    padding: 0.875rem 1.25rem;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 767px) {
+  .sidebar {
+    width: 260px;
+  }
+  
+  .mobile-menu-button {
+    top: 0.875rem;
+    left: 0.875rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .sidebar {
+    width: 260px;
+  }
+  
+  .sidebar-nav .nav-item {
+    padding: 0.9375rem 1.375rem;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1440px) {
+  .sidebar {
+    width: 260px;
+  }
+  
+  .main-content.desktop {
+    margin-left: 260px;
+  }
+}
+
+@media (min-width: 1441px) {
+  .sidebar {
+    width: 300px;
+  }
+  
+  .main-content.desktop {
+    margin-left: 300px;
+  }
+  
+  .sidebar-nav .nav-item {
+    padding: 1.125rem 1.75rem;
+  }
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+  .sidebar {
+    background: var(--ion-background-color, #1a1a1a);
+    border-right-color: var(--ion-color-dark, #2a2a2a);
+    box-shadow: 2px 0 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  .sidebar-header {
+    border-bottom-color: var(--ion-color-dark, #2a2a2a);
+  }
+  
+  .sidebar-footer {
+    border-top-color: var(--ion-color-dark, #2a2a2a);
+  }
+}
+
+// Reduced motion support
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebar-overlay,
+  .main-content,
+  .nav-item,
+  .mobile-menu-button {
+    transition: none;
+  }
+}
+
+// High contrast mode support
+@media (prefers-contrast: high) {
+  .sidebar {
+    border-right-width: 2px;
+  }
+  
+  .nav-item.active {
+    border: 2px solid currentColor;
+  }
+}

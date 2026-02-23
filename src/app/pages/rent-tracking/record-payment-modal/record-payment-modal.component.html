@@ -11,27 +11,39 @@
   <p>Add a new rent payment record</p>
 
   <ion-grid>
+    <!-- Lease Selection Dropdown -->
     <ion-row>
       <ion-col>
         <ion-item>
-          <ion-label position="stacked">Tenant Name</ion-label>
-          <ion-input [(ngModel)]="payment.tenantName" placeholder="Enter tenant name"></ion-input>
+          <ion-label position="stacked">Select Tenant & Property</ion-label>
+          <ion-select 
+            [(ngModel)]="selectedLeaseId" 
+            (ionChange)="onLeaseSelected()"
+            placeholder="Choose a tenant/property"
+            interface="action-sheet"
+            [disabled]="isLoading">
+            <ion-select-option *ngFor="let lease of leases" [value]="lease.leaseId">
+              {{ lease.displayLabel }} (TZS {{ lease.monthlyRent | number:'1.0-0' }}/month)
+            </ion-select-option>
+          </ion-select>
         </ion-item>
+        <ion-note *ngIf="isLoading" color="medium" style="padding-left: 16px;">Loading tenants...</ion-note>
+        <ion-note *ngIf="!isLoading && leases.length === 0" color="warning" style="padding-left: 16px;">No active leases found</ion-note>
       </ion-col>
     </ion-row>
 
-    <ion-row>
+    <!-- Auto-filled details (read-only display) -->
+    <ion-row *ngIf="selectedLeaseId">
       <ion-col size="6">
         <ion-item>
-          <ion-label position="stacked">Property Number</ion-label>
-          <ion-input [(ngModel)]="payment.propertyNumber" placeholder="P-123"></ion-input>
+          <ion-label position="stacked">Tenant</ion-label>
+          <ion-input [(ngModel)]="payment.tenantName" readonly></ion-input>
         </ion-item>
       </ion-col>
-
       <ion-col size="6">
         <ion-item>
-          <ion-label position="stacked">Unit Number</ion-label>
-          <ion-input [(ngModel)]="payment.unitNumber" placeholder="2A"></ion-input>
+          <ion-label position="stacked">Property</ion-label>
+          <ion-input [(ngModel)]="payment.propertyNumber" readonly></ion-input>
         </ion-item>
       </ion-col>
     </ion-row>
@@ -46,8 +58,8 @@
 
       <ion-col size="6">
         <ion-item>
-          <ion-label position="stacked">Amount ($)</ion-label>
-          <ion-input type="number" [(ngModel)]="payment.amount" placeholder="1200"></ion-input>
+          <ion-label position="stacked">Amount (TZS)</ion-label>
+          <ion-input type="number" [(ngModel)]="payment.amount" placeholder="Enter amount"></ion-input>
         </ion-item>
       </ion-col>
     </ion-row>
@@ -56,7 +68,7 @@
       <ion-col size="6">
         <ion-item>
           <ion-label position="stacked">Due Date</ion-label>
-          <ion-datetime presentation="date" [(ngModel)]="payment.dueDate"></ion-datetime>
+          <ion-note style="padding-top: 10px; font-size: 14px;">7th of every month</ion-note>
         </ion-item>
       </ion-col>
 
@@ -73,10 +85,28 @@
         <ion-item>
           <ion-label position="stacked">Payment Method</ion-label>
           <ion-select placeholder="Select payment method" [(ngModel)]="payment.paymentMethod">
-            <ion-select-option value="Bank Transfer">Bank Transfer</ion-select-option>
-            <ion-select-option value="Cash">Cash</ion-select-option>
-            <ion-select-option value="Check">Check</ion-select-option>
+            <ion-select-option value="BANK_TRANSFER">Bank Transfer</ion-select-option>
+            <ion-select-option value="CASH">Cash</ion-select-option>
+            <ion-select-option value="CHECK">Check</ion-select-option>
           </ion-select>
+        </ion-item>
+      </ion-col>
+    </ion-row>
+
+    <ion-row>
+      <ion-col>
+        <ion-item>
+          <ion-label position="stacked">Reference (Optional)</ion-label>
+          <ion-input [(ngModel)]="payment.reference" placeholder="Transaction reference"></ion-input>
+        </ion-item>
+      </ion-col>
+    </ion-row>
+
+    <ion-row>
+      <ion-col>
+        <ion-item>
+          <ion-label position="stacked">Notes (Optional)</ion-label>
+          <ion-textarea [(ngModel)]="payment.notes" placeholder="Additional notes..."></ion-textarea>
         </ion-item>
       </ion-col>
     </ion-row>

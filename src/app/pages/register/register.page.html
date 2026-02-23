@@ -1,0 +1,95 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>Register</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/login"></ion-back-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="ion-padding">
+    <div class="register-container">
+      <h2>Create Owner Account</h2>
+      <p class="subtitle">Join RentPro to manage your properties efficiently</p>
+
+      <form (ngSubmit)="register()">
+        <ion-item>
+          <ion-label position="stacked">Full Name</ion-label>
+          <ion-input
+            type="text"
+            [(ngModel)]="fullName"
+            name="fullName"
+            required
+            maxlength="120"
+            placeholder="Enter your full name (max 120 characters)">
+          </ion-input>
+        </ion-item>
+
+        <ion-item>
+          <ion-label position="stacked">Email</ion-label>
+          <ion-input
+            type="email"
+            [(ngModel)]="email"
+            name="email"
+            required
+            maxlength="150"
+            placeholder="Enter your email">
+          </ion-input>
+        </ion-item>
+
+        <ion-item>
+          <ion-label position="stacked">Phone (Optional)</ion-label>
+          <ion-input
+            type="tel"
+            [(ngModel)]="phone"
+            name="phone"
+            maxlength="40"
+            placeholder="Enter your phone number (e.g., +1234567890)">
+          </ion-input>
+        </ion-item>
+
+        <ion-item>
+          <ion-label position="stacked">Password</ion-label>
+          <ion-input
+            type="password"
+            [(ngModel)]="password"
+            name="password"
+            required
+            minlength="6"
+            placeholder="Enter your password (min 6 characters)">
+          </ion-input>
+        </ion-item>
+
+        <ion-item>
+          <ion-label position="stacked">Confirm Password</ion-label>
+          <ion-input
+            type="password"
+            [(ngModel)]="confirmPassword"
+            name="confirmPassword"
+            required
+            minlength="6"
+            placeholder="Confirm your password">
+          </ion-input>
+        </ion-item>
+
+        <ion-button
+          type="submit"
+          expand="block"
+          class="register-btn"
+          [disabled]="!isFormValid()">
+          <ion-icon name="person-add-outline" slot="start"></ion-icon>
+          Create Account
+        </ion-button>
+      </form>
+
+      <div class="login-link">
+        <p>Already have an account? 
+          <ion-button fill="clear" (click)="goToLogin()">
+            Sign In
+          </ion-button>
+        </p>
+      </div>
+    </div>
+  </div>
+</ion-content>

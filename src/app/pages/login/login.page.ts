@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AlertController } from '@ionic/angular';
-import { AuthService } from '../../services/auth.service'; 
+import { AuthService } from '../../services/auth.service';
+import { UserService } from '../../services/user.service'; 
 
 @Component({
   selector: 'app-login',
@@ -10,21 +11,24 @@ import { AuthService } from '../../services/auth.service';
   standalone: false
 })
 export class LoginPage implements OnInit {
-  username = '';
+  email = '';
   password = '';
-  rememberMe = false;
+  rememberMe = true; // Default to true for better UX - token persists across page reloads
 
   constructor(
     private router: Router,
     private alertController: AlertController,
-    private authService: AuthService
+    private authService: AuthService,
+    private userService: UserService
   ) {}
 
   ngOnInit() {}
 
   async login() {
-    this.authService.login(this.username, this.password, this.rememberMe).subscribe({
+    this.authService.login(this.email, this.password, this.rememberMe).subscribe({
       next: async () => {
+        // Load user profile after successful login
+        await this.userService.loadUserProfile();
         this.router.navigate(['/tabs/dashboard']);
       },
       error: async (err: any) => { // ✅ fixes TS7006
@@ -36,5 +40,9 @@ export class LoginPage implements OnInit {
         await alert.present();
       },
     });
+  }
+
+  goToRegister() {
+    this.router.navigate(['/register']);
   }
 }

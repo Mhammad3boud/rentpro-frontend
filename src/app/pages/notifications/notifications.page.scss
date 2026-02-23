@@ -46,3 +46,21 @@ ion-card[role="button"]:hover {
     font-size: 1.1rem;
   }
 }
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 80vh;
+  text-align: center;
+  color: var(--ion-color-medium);
+
+  ion-spinner {
+    margin-bottom: 1rem;
+  }
+
+  p {
+    font-size: 1.1rem;
+  }
+}

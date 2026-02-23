@@ -1,9 +1,13 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { ModalController, AlertController, ToastController } from '@ionic/angular';
 import { GenerateContractModalComponent } from './generate-contract-modal/generate-contract-modal.component';
+import { LeaseService } from '../../services/lease.service';
+import { Lease } from '../../models';
 
 interface Contract {
   id: string;
+  leaseId: string;
   tenant: string;
   property: string;
   startDate: string;
@@ -21,68 +25,92 @@ interface Contract {
   standalone: false,
 })
 export class ContractsPage implements OnInit {
-  contracts: Contract[] = [
-    {
-      id: 'CNT-2024-001',
-      tenant: 'Alice Johnson',
-      property: 'P-456/2A',
-      startDate: '2024-01-15',
-      endDate: '2024-12-31',
-      rent: 1200,
-      deposit: 2400,
-      generated: '2024-01-10',
-      status: 'Active',
-    },
-    {
-      id: 'CNT-2024-002',
-      tenant: 'Michael Chen',
-      property: 'P-789/5B',
-      startDate: '2024-03-01',
-      endDate: '2025-02-28',
-      rent: 1500,
-      deposit: 3000,
-      generated: '2024-02-25',
-      status: 'Active',
-    },
-    {
-      id: 'CNT-2024-003',
-      tenant: 'Emma Wilson',
-      property: 'P-123/3C',
-      startDate: '2023-06-01',
-      endDate: '2024-10-15',
-      rent: 1100,
-      deposit: 2200,
-      generated: '2023-05-25',
-      status: 'Expiring Soon',
-    },
-  ];
-
+  contracts: Contract[] = [];
   filteredContracts: Contract[] = [];
   searchTerm = '';
+  isLoading = true;
+  private readonly baseUrl = 'http://localhost:8083';
 
   constructor(
-  private modalCtrl: ModalController,
-  private alertController: AlertController,
-  private toastController: ToastController,
-) {}
+    private modalCtrl: ModalController,
+    private alertController: AlertController,
+    private toastController: ToastController,
+    private leaseService: LeaseService,
+    private http: HttpClient,
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   ngOnInit() {
-    // Ensure statuses reflect dates on load
-    this.contracts = this.contracts.map((c) => ({
-      ...c,
-      status: this.computeStatus(c.startDate, c.endDate),
-    }));
-    this.filteredContracts = [...this.contracts];
+    this.loadContracts();
+  }
+
+  doRefresh(event: any) {
+    this.leaseService.getMyLeases().subscribe({
+      next: (leases) => {
+        this.contracts = leases.map((lease) => this.mapLeaseToContract(lease));
+        this.filterContracts();
+        this.cdr.detectChanges();
+        event.target.complete();
+      },
+      error: (err) => {
+        console.error('Failed to load contracts:', err);
+        this.presentToast('Failed to load contracts', 'danger');
+        event.target.complete();
+      },
+    });
+  }
+
+  loadContracts() {
+    this.isLoading = true;
+    this.leaseService.getMyLeases().subscribe({
+      next: (leases) => {
+        console.log('Loaded leases:', leases);
+        this.contracts = leases.map((lease) => this.mapLeaseToContract(lease));
+        console.log('Mapped contracts:', this.contracts);
+        this.filterContracts();
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Failed to load contracts:', err);
+        this.presentToast('Failed to load contracts', 'danger');
+        this.isLoading = false;
+      },
+    });
+  }
+
+  private mapLeaseToContract(lease: Lease): Contract {
+    const propertyName = lease.property?.propertyName || lease.property?.address || 'Unknown Property';
+    const unitNumber = lease.unit?.unitNumber;
+    const propertyDisplay = unitNumber ? `${propertyName} / Unit ${unitNumber}` : propertyName;
+    
+    return {
+      id: `CNT-${lease.leaseId.slice(0, 8).toUpperCase()}`,
+      leaseId: lease.leaseId,
+      tenant: lease.tenant?.fullName || 'Unknown Tenant',
+      property: propertyDisplay,
+      startDate: lease.startDate || '',
+      endDate: lease.endDate || '',
+      rent: lease.monthlyRent || 0,
+      deposit: lease.securityDeposit != null ? lease.securityDeposit : (lease.monthlyRent || 0) * 2,
+      generated: lease.createdAt?.slice(0, 10) || '',
+      status: this.computeStatus(lease.startDate || '', lease.endDate || ''),
+    };
   }
 
   filterContracts() {
     const term = this.searchTerm.toLowerCase();
-    this.filteredContracts = this.contracts.filter(
+    this.filteredContracts = [...this.contracts.filter(
       (c) =>
         c.tenant.toLowerCase().includes(term) ||
         c.id.toLowerCase().includes(term) ||
         c.property.toLowerCase().includes(term)
-    );
+    )];
+  }
+
+  trackByContract(index: number, contract: Contract): string {
+    // Include deposit in tracking to detect changes
+    return `${contract.leaseId}-${contract.rent}-${contract.deposit}`;
   }
 
   // 🆕 Open Generate Contract Modal
@@ -94,16 +122,22 @@ export class ContractsPage implements OnInit {
 
     await modal.present();
 
-    // Handle returned data and add a new contract card
+    // Handle returned data - generate PDF
     const { data } = await modal.onWillDismiss();
     if (data) {
       const today = new Date().toISOString().slice(0, 10);
       const seq = (Date.now() % 1000).toString().padStart(3, '0');
       const year = new Date().getFullYear();
-      const newContract: Contract = {
-        id: `CNT-${year}-${seq}`,
+      const contractId = `CNT-${year}-${seq}`;
+      
+      // Create a temporary contract object for PDF generation
+      const pdfContract: Contract = {
+        id: contractId,
+        leaseId: '',
         tenant: data.tenantName || 'Unnamed Tenant',
-        property: `${data.propertyNumber || ''}/${data.unitNumber || ''}`,
+        property: data.unitNumber 
+          ? `${data.propertyNumber || ''} / Unit ${data.unitNumber}`
+          : (data.propertyNumber || ''),
         startDate: data.leaseStartDate || today,
         endDate: data.leaseEndDate || today,
         rent: Number(data.monthlyRent) || 0,
@@ -111,13 +145,19 @@ export class ContractsPage implements OnInit {
         generated: today,
         status: this.computeStatus(data.leaseStartDate || today, data.leaseEndDate || today),
       };
-      this.contracts = [newContract, ...this.contracts];
-      this.filterContracts();
+      
+      // Generate and download the PDF
+      this.generatePdf(pdfContract);
+      this.presentToast('Contract PDF generated', 'success');
     }
   }
 
   async editContract(contract: Contract) {
-    const [propertyNumber = '', unitNumber = ''] = (contract.property || '').split('/');
+    // Parse property display format: "Property Name / Unit X" or "Property Name"
+    const parts = (contract.property || '').split(' / Unit ');
+    const propertyNumber = parts[0]?.trim() || '';
+    const unitNumber = parts[1]?.trim() || '';
+    
     const modal = await this.modalCtrl.create({
       component: GenerateContractModalComponent,
       componentProps: {
@@ -130,6 +170,7 @@ export class ContractsPage implements OnInit {
           monthlyRent: contract.rent,
           securityDeposit: contract.deposit,
         },
+        isEditMode: true,
       },
       cssClass: 'generate-contract-modal',
     });
@@ -137,19 +178,50 @@ export class ContractsPage implements OnInit {
 
     const { data } = await modal.onWillDismiss();
     if (data) {
-      contract.tenant = data.tenantName ?? contract.tenant;
-      contract.property = `${data.propertyNumber || propertyNumber}/${data.unitNumber || unitNumber}`;
-      contract.startDate = data.leaseStartDate || contract.startDate;
-      contract.endDate = data.leaseEndDate || contract.endDate;
-      contract.rent = Number(data.monthlyRent ?? contract.rent);
-      contract.deposit = Number(data.securityDeposit ?? contract.deposit);
-      contract.status = this.computeStatus(contract.startDate, contract.endDate);
-      this.filterContracts();
+      // Call backend to update lease
+      this.leaseService.updateLease(contract.leaseId, {
+        monthlyRent: Number(data.monthlyRent),
+        securityDeposit: Number(data.securityDeposit),
+        startDate: data.leaseStartDate,
+        endDate: data.leaseEndDate,
+      }).subscribe({
+        next: () => {
+          // Reload contracts to get fresh data
+          this.loadContracts();
+          this.presentToast('Contract updated', 'success');
+        },
+        error: (err) => {
+          console.error('Failed to update contract:', err);
+          this.presentToast('Failed to update contract', 'danger');
+        },
+      });
     }
   }
 
   downloadPdf(contract: Contract) {
-    this.generatePdf(contract);
+    // If contract has a real leaseId, try backend PDF first
+    if (contract.leaseId) {
+      this.http.get(`${this.baseUrl}/api/contracts/${contract.leaseId}/pdf`, { 
+        responseType: 'blob' 
+      }).subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${contract.id}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        },
+        error: () => {
+          // Fallback to frontend PDF generation
+          this.generatePdf(contract);
+        },
+      });
+    } else {
+      this.generatePdf(contract);
+    }
   }
 
   async confirmDelete(contract: Contract) {
@@ -165,9 +237,17 @@ export class ContractsPage implements OnInit {
   }
 
   private deleteContract(contract: Contract) {
-    this.contracts = this.contracts.filter(c => c !== contract);
-    this.filterContracts();
-    this.presentToast('Contract deleted', 'danger');
+    this.leaseService.deleteLease(contract.leaseId).subscribe({
+      next: () => {
+        this.contracts = this.contracts.filter(c => c !== contract);
+        this.filterContracts();
+        this.presentToast('Contract deleted', 'success');
+      },
+      error: (err) => {
+        console.error('Failed to delete contract:', err);
+        this.presentToast('Failed to delete contract', 'danger');
+      },
+    });
   }
 
   private async presentToast(message: string, color: 'success' | 'danger' | 'primary' | 'medium') {

@@ -1,186 +1,87 @@
 <ion-header>
   <ion-toolbar>
-    <ion-title>{{ isEditMode ? 'Edit Maintenance' : 'Add Maintenance' }}</ion-title>
+    <ion-title>{{ isEditMode ? 'Edit Maintenance' : 'New Maintenance Request' }}</ion-title>
     <ion-buttons slot="end">
-      <ion-button fill="clear" (click)="close()">✕</ion-button>
+      <ion-button fill="clear" (click)="close()">
+        <ion-icon name="close-outline"></ion-icon>
+      </ion-button>
     </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content class="ion-padding">
-  <p>{{ isEditMode ? 'Edit the maintenance task details' : 'Enter the details for the new maintenance task' }}</p>
+  <div *ngIf="isLoading" class="loading-container">
+    <ion-spinner></ion-spinner>
+    <p>Loading properties...</p>
+  </div>
 
-  <ion-grid>
-    <ion-row>
-      <ion-col size="12">
-        <ion-item>
-          <ion-label position="stacked">Task Title *</ion-label>
-          <ion-input 
-            placeholder="Enter task title" 
-            [(ngModel)]="taskData.title"
-            required>
-          </ion-input>
-        </ion-item>
-      </ion-col>
+  <div *ngIf="!isLoading">
+    <ion-list>
+      <ion-item>
+        <ion-label position="stacked">Property/Lease *</ion-label>
+        <ion-select 
+          interface="popover" 
+          [(ngModel)]="taskData.leaseId" 
+          (ionChange)="onLeaseChange($event.detail.value)"
+          placeholder="Select a property">
+          <ion-select-option *ngFor="let lease of availableLeases" [value]="lease.leaseId">
+            {{ lease.propertyName }}{{ lease.unitNumber ? ' - Unit ' + lease.unitNumber : '' }}
+          </ion-select-option>
+        </ion-select>
+      </ion-item>
 
-      <ion-col size="12">
-        <ion-item>
-          <ion-label position="stacked">Description</ion-label>
-          <ion-textarea 
-            placeholder="Describe the maintenance task" 
-            [(ngModel)]="taskData.description"
-            rows="3">
-          </ion-textarea>
-        </ion-item>
-      </ion-col>
+      <ion-item>
+        <ion-label position="stacked">Title *</ion-label>
+        <ion-input 
+          placeholder="Brief description of the issue" 
+          [(ngModel)]="taskData.title"
+          required>
+        </ion-input>
+      </ion-item>
 
-      <ion-col size="12" size-md="6">
-        <ion-item>
-          <ion-label position="stacked">Asset/Property *</ion-label>
-          <ion-select interface="popover" [(ngModel)]="taskData.assetId" (ionChange)="onAssetChange($event.detail.value)">
-            <ion-select-option *ngFor="let asset of availableAssets" [value]="asset.id">
-              {{ asset.name }}
-            </ion-select-option>
-          </ion-select>
-        </ion-item>
-      </ion-col>
+      <ion-item>
+        <ion-label position="stacked">Description</ion-label>
+        <ion-textarea 
+          placeholder="Detailed description of the maintenance issue" 
+          [(ngModel)]="taskData.description"
+          rows="4">
+        </ion-textarea>
+      </ion-item>
 
-      <ion-col size="12" size-md="6">
-        <ion-item>
-          <ion-label position="stacked">Category</ion-label>
-          <ion-select interface="popover" [(ngModel)]="taskData.category">
-            <ion-select-option *ngFor="let cat of categories" [value]="cat.value">
-              <ion-icon [name]="cat.icon" slot="start"></ion-icon>
-              {{ cat.label }}
-            </ion-select-option>
-          </ion-select>
-        </ion-item>
-      </ion-col>
+      <ion-item>
+        <ion-label position="stacked">Priority</ion-label>
+        <ion-select interface="popover" [(ngModel)]="taskData.priority">
+          <ion-select-option value="LOW">Low</ion-select-option>
+          <ion-select-option value="MEDIUM">Medium</ion-select-option>
+          <ion-select-option value="HIGH">High</ion-select-option>
+        </ion-select>
+      </ion-item>
 
-      <ion-col size="12" size-md="6">
-        <ion-item>
-          <ion-label position="stacked">Priority</ion-label>
-          <ion-select interface="popover" [(ngModel)]="taskData.priority">
-            <ion-select-option value="low">Low</ion-select-option>
-            <ion-select-option value="medium">Medium</ion-select-option>
-            <ion-select-option value="high">High</ion-select-option>
-            <ion-select-option value="critical">Critical</ion-select-option>
-          </ion-select>
-        </ion-item>
-      </ion-col>
+      <ion-item>
+        <ion-label position="stacked">Assigned Technician</ion-label>
+        <ion-input 
+          placeholder="Technician name or company" 
+          [(ngModel)]="taskData.assignedTechnician">
+        </ion-input>
+      </ion-item>
 
-      <ion-col size="12" size-md="6">
-        <ion-item>
-          <ion-label position="stacked">Status</ion-label>
-          <ion-select interface="popover" [(ngModel)]="taskData.status">
-            <ion-select-option value="pending">Pending</ion-select-option>
-            <ion-select-option value="in-progress">In Progress</ion-select-option>
-            <ion-select-option value="completed">Completed</ion-select-option>
-            <ion-select-option value="overdue">Overdue</ion-select-option>
-          </ion-select>
-        </ion-item>
-      </ion-col>
+      <ion-item>
+        <ion-label position="stacked">Estimated Cost (TZS)</ion-label>
+        <ion-input 
+          type="number" 
+          placeholder="0" 
+          [(ngModel)]="taskData.maintenanceCost">
+        </ion-input>
+      </ion-item>
+    </ion-list>
 
-      <ion-col size="12" size-md="6">
-        <ion-item>
-          <ion-label position="stacked">Scheduled Date *</ion-label>
-          <ion-datetime 
-            presentation="date" 
-            [(ngModel)]="taskData.scheduledDate"
-            required>
-          </ion-datetime>
-        </ion-item>
-      </ion-col>
-
-      <ion-col size="12" size-md="6" *ngIf="taskData.status === 'completed'">
-        <ion-item>
-          <ion-label position="stacked">Completed Date</ion-label>
-          <ion-datetime 
-            presentation="date" 
-            [(ngModel)]="taskData.completedDate">
-          </ion-datetime>
-        </ion-item>
-      </ion-col>
-
-      <ion-col size="12" size-md="6">
-        <ion-item>
-          <ion-label position="stacked">Assigned To</ion-label>
-          <ion-input 
-            placeholder="Person or company name" 
-            [(ngModel)]="taskData.assignedTo">
-          </ion-input>
-        </ion-item>
-      </ion-col>
-
-      <ion-col size="12" size-md="6">
-        <ion-item>
-          <ion-label position="stacked">Estimated Cost (TZS)</ion-label>
-          <ion-input 
-            type="number" 
-            placeholder="0.00" 
-            [(ngModel)]="taskData.estimatedCost">
-          </ion-input>
-        </ion-item>
-      </ion-col>
-
-      <ion-col size="12" size-md="6" *ngIf="taskData.status === 'completed'">
-        <ion-item>
-          <ion-label position="stacked">Actual Cost (TZS)</ion-label>
-          <ion-input 
-            type="number" 
-            placeholder="0.00" 
-            [(ngModel)]="taskData.actualCost">
-          </ion-input>
-        </ion-item>
-      </ion-col>
-
-      <ion-col size="12">
-        <ion-item button (click)="toggleRecurring()">
-          <ion-label>
-            <h3>Recurring Task</h3>
-            <p>{{ taskData.recurring ? 'Task repeats on schedule' : 'One-time task' }}</p>
-          </ion-label>
-          <ion-checkbox 
-            slot="end" 
-            [checked]="!!taskData.recurring"
-            (ionChange)="toggleRecurring()">
-          </ion-checkbox>
-        </ion-item>
-      </ion-col>
-
-      <ion-col size="12" size-md="6" *ngIf="taskData.recurring">
-        <ion-item>
-          <ion-label position="stacked">Frequency</ion-label>
-          <ion-select interface="popover" [(ngModel)]="taskData.recurring.frequency">
-            <ion-select-option value="daily">Daily</ion-select-option>
-            <ion-select-option value="weekly">Weekly</ion-select-option>
-            <ion-select-option value="monthly">Monthly</ion-select-option>
-            <ion-select-option value="yearly">Yearly</ion-select-option>
-          </ion-select>
-        </ion-item>
-      </ion-col>
-
-      <ion-col size="12" size-md="6" *ngIf="taskData.recurring">
-        <ion-item>
-          <ion-label position="stacked">Interval</ion-label>
-          <ion-input 
-            type="number" 
-            placeholder="1" 
-            [(ngModel)]="taskData.recurring.interval">
-          </ion-input>
-        </ion-item>
-      </ion-col>
-
-      <ion-col size="12">
-        <div class="action-buttons">
-          <ion-button expand="block" fill="outline" (click)="close()">
-            Cancel
-          </ion-button>
-          <ion-button expand="block" (click)="saveTask()" [disabled]="!taskData.title || !taskData.assetId">
-            {{ isEditMode ? 'Update Task' : 'Add Task' }}
-          </ion-button>
-        </div>
-      </ion-col>
-    </ion-row>
-  </ion-grid>
+    <div class="action-buttons">
+      <ion-button expand="block" fill="outline" (click)="close()">
+        Cancel
+      </ion-button>
+      <ion-button expand="block" (click)="saveTask()" [disabled]="!taskData.title || !taskData.leaseId">
+        {{ isEditMode ? 'Update Request' : 'Submit Request' }}
+      </ion-button>
+    </div>
+  </div>
 </ion-content>

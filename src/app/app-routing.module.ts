@@ -18,6 +18,11 @@ const routes: Routes = [
       import('./pages/login/login.module').then(m => m.LoginPageModule)
   },
   {
+    path: 'register',
+    loadChildren: () =>
+      import('./pages/register/register.module').then(m => m.RegisterPageModule)
+  },
+  {
     path: 'tabs',
     loadChildren: () =>
       import('./pages/tabs/tabs.module').then(m => m.TabsPageModule)
@@ -29,6 +34,10 @@ const routes: Routes = [
   {
     path: 'notifications',
     loadChildren: () => import('./pages/notifications/notifications.module').then( m => m.NotificationsPageModule)
+  },
+  {
+    path: 'tenants',
+    loadChildren: () => import('./pages/tenants/tenants.module').then( m => m.TenantsPageModule)
   }
 ];
 

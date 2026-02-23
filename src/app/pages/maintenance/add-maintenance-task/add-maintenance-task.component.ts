@@ -1,24 +1,26 @@
 import { Component, OnInit, Input } from '@angular/core';
-import { ModalController } from '@ionic/angular';
+import { ModalController, ToastController } from '@ionic/angular';
+import { LeaseService } from '../../../services/lease.service';
+
+interface LeaseOption {
+  leaseId: string;
+  propertyId: string;
+  propertyName: string;
+  unitId?: string;
+  unitNumber?: string;
+  tenantName?: string;
+}
 
 interface MaintenanceTaskData {
-  id?: string;
+  leaseId: string;
+  propertyId: string;
+  unitId?: string;
   title: string;
   description: string;
-  assetId: string;
-  assetName: string;
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  status: 'pending' | 'in-progress' | 'completed' | 'overdue';
-  scheduledDate: string;
-  completedDate?: string;
-  assignedTo?: string;
-  estimatedCost?: number;
-  actualCost?: number;
-  recurring?: {
-    frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
-    interval: number;
-  };
-  category: 'plumbing' | 'electrical' | 'hvac' | 'general' | 'landscaping' | 'pest-control' | 'cleaning' | 'other';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  assignedTechnician?: string;
+  maintenanceCost?: number;
+  status?: string;
 }
 
 @Component({
@@ -29,51 +31,51 @@ interface MaintenanceTaskData {
 })
 export class AddMaintenanceTaskComponent implements OnInit {
   @Input() taskData: MaintenanceTaskData = {
+    leaseId: '',
+    propertyId: '',
     title: '',
     description: '',
-    assetId: '',
-    assetName: '',
-    priority: 'medium',
-    status: 'pending',
-    scheduledDate: '',
-    category: 'general',
-    recurring: {
-      frequency: 'monthly',
-      interval: 1
-    }
+    priority: 'MEDIUM'
   };
 
   isEditMode = false;
+  isLoading = false;
+  availableLeases: LeaseOption[] = [];
 
-  availableAssets = [
-    { id: 'P-456', name: 'Business District, Downtown' },
-    { id: 'P-789', name: 'Agricultural Zone, Countryside' },
-    { id: 'P-811', name: 'Agricultural Zone, Countryside' }
-  ];
-
-  categories = [
-    { value: 'plumbing', label: 'Plumbing', icon: 'water-outline' },
-    { value: 'electrical', label: 'Electrical', icon: 'flash-outline' },
-    { value: 'hvac', label: 'HVAC', icon: 'snow-outline' },
-    { value: 'general', label: 'General', icon: 'build-outline' },
-    { value: 'landscaping', label: 'Landscaping', icon: 'leaf-outline' },
-    { value: 'pest-control', label: 'Pest Control', icon: 'bug-outline' },
-    { value: 'cleaning', label: 'Cleaning', icon: 'sparkles-outline' },
-    { value: 'other', label: 'Other', icon: 'ellipsis-horizontal-outline' }
-  ];
-
-  constructor(private modalCtrl: ModalController) {}
+  constructor(
+    private modalCtrl: ModalController,
+    private toastController: ToastController,
+    private leaseService: LeaseService
+  ) {}
 
   ngOnInit() {
-    console.log('AddMaintenanceTaskComponent initialized');
-    console.log('Task data on init:', this.taskData);
+    this.loadLeases();
     
-    if (this.taskData.id) {
+    if (this.taskData.leaseId) {
       this.isEditMode = true;
-      console.log('Edit mode enabled for task:', this.taskData.id);
-    } else {
-      console.log('Add mode - new task');
     }
+  }
+
+  loadLeases() {
+    this.isLoading = true;
+    this.leaseService.getMyLeases().subscribe({
+      next: (leases: any[]) => {
+        this.availableLeases = leases.map((lease: any) => ({
+          leaseId: lease.leaseId,
+          propertyId: lease.propertyId || lease.property?.propertyId || '',
+          propertyName: lease.propertyName || lease.property?.propertyName || 'Unknown Property',
+          unitId: lease.unitId || lease.unit?.unitId,
+          unitNumber: lease.unitNumber || lease.unit?.unitNumber,
+          tenantName: lease.tenantName || lease.tenant?.fullName
+        }));
+        this.isLoading = false;
+      },
+      error: (error: any) => {
+        console.error('Error loading leases:', error);
+        this.isLoading = false;
+        this.presentToast('Error loading leases', 'danger');
+      }
+    });
   }
 
   close() {
@@ -81,41 +83,34 @@ export class AddMaintenanceTaskComponent implements OnInit {
   }
 
   saveTask() {
-    if (!this.taskData.title || !this.taskData.assetId) {
-      this.showError('Please fill in all required fields');
+    if (!this.taskData.title) {
+      this.presentToast('Please enter a task title', 'warning');
       return;
     }
 
-    if (!this.taskData.scheduledDate) {
-      this.showError('Please select a scheduled date');
+    if (!this.taskData.leaseId) {
+      this.presentToast('Please select a property/lease', 'warning');
       return;
     }
 
-    console.log('Maintenance Task:', this.taskData);
     this.modalCtrl.dismiss(this.taskData);
   }
 
-  toggleRecurring() {
-    if (this.taskData.recurring) {
-      delete this.taskData.recurring;
-    } else {
-      this.taskData.recurring = {
-        frequency: 'monthly',
-        interval: 1
-      };
+  onLeaseChange(leaseId: string) {
+    const lease = this.availableLeases.find(l => l.leaseId === leaseId);
+    if (lease) {
+      this.taskData.propertyId = lease.propertyId;
+      this.taskData.unitId = lease.unitId;
     }
   }
 
-  onAssetChange(assetId: string) {
-    console.log('Asset changed to:', assetId);
-    const asset = this.availableAssets.find(a => a.id === assetId);
-    if (asset) {
-      this.taskData.assetName = asset.name;
-      console.log('Asset name set to:', asset.name);
-    }
-  }
-
-  private async showError(message: string) {
-    console.error(message);
+  private async presentToast(message: string, color: 'success' | 'danger' | 'warning') {
+    const toast = await this.toastController.create({
+      message,
+      duration: 2000,
+      color,
+      position: 'top'
+    });
+    await toast.present();
   }
 }
