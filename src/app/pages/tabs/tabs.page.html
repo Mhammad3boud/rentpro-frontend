@@ -1,33 +1,79 @@
-<ion-tabs>
-  <ion-tab-bar slot="bottom">
-    <ion-tab-button tab="dashboard">
-      <ion-icon name="home-outline"></ion-icon>
-      <ion-label>Dashboard</ion-label>
-    </ion-tab-button>
+<ion-content class="tabs-page" [ngClass]="platformClasses">
+  <!-- Menu Button - shown on all platforms when sidebar is closed -->
+  <ion-button 
+    *ngIf="!isSidebarOpen" 
+    class="mobile-menu-button" 
+    fill="clear" 
+    (click)="toggleSidebar()"
+    color="dark">
+    <ion-icon name="menu-outline"></ion-icon>
+  </ion-button>
 
-    <ion-tab-button tab="assets">
-      <ion-icon name="business-outline"></ion-icon>
-      <ion-label>Assets</ion-label>
-    </ion-tab-button>
+  <!-- Sidebar Overlay for Mobile and Tablet -->
+  <div 
+    *ngIf="!isDesktop && isSidebarOpen" 
+    class="sidebar-overlay" 
+    (click)="closeSidebar()">
+  </div>
 
-    <ion-tab-button tab="tenants">
-      <ion-icon name="people-outline"></ion-icon>
-      <ion-label>Tenants</ion-label>
-    </ion-tab-button>
+  <!-- Swipe Area for Mobile (left edge) -->
+  <div 
+    *ngIf="isMobile" 
+    class="swipe-area"
+    (swipe)="handleSwipe($event)">
+  </div>
 
-    <ion-tab-button tab="rent-tracking">
-      <ion-icon name="cash-outline"></ion-icon>
-      <ion-label>Rent</ion-label>
-    </ion-tab-button>
+  <!-- Sidebar -->
+  <aside class="sidebar" 
+         [ngClass]="platformClasses"
+         (swipe)="handleSidebarSwipe($event)">
 
-    <ion-tab-button tab="contracts">
-      <ion-icon name="document-text-outline"></ion-icon>
-      <ion-label>Contracts</ion-label>
-    </ion-tab-button>
+    <!-- Sidebar Header -->
+    <div class="sidebar-header">
+      <div class="logo">
+        <ion-icon name="business-outline"></ion-icon>
+        <span *ngIf="isDesktop || isTablet" class="logo-text">RentPro</span>
+      </div>
+      
+      <!-- Close button for all platforms -->
+      <ion-button 
+        class="close-button" 
+        fill="clear" 
+        (click)="closeSidebar()"
+        color="dark">
+        <ion-icon name="close-outline"></ion-icon>
+      </ion-button>
+    </div>
 
-    <ion-tab-button tab="maintenance">
-      <ion-icon name="build-outline"></ion-icon>
-      <ion-label>Maintenance</ion-label>
-    </ion-tab-button>
-  </ion-tab-bar>
-</ion-tabs>
+    <!-- Navigation Items -->
+    <nav class="sidebar-nav">
+      <div class="nav-item" 
+           *ngFor="let item of sidebarItems" 
+           [class.active]="isActive(item.path)"
+           (click)="selectItem(item.path)">
+        <ion-icon [name]="item.icon"></ion-icon>
+        <span class="nav-label">{{ item.label }}</span>
+        
+        <ion-badge 
+          *ngIf="item.badge && item.badge > 0" 
+          color="danger" 
+          class="nav-badge">
+          {{ item.badge }}
+        </ion-badge>
+      </div>
+    </nav>
+
+    <!-- Sidebar Footer -->
+    <div class="sidebar-footer" *ngIf="isDesktop || (isTablet && isSidebarOpen)">
+      <div class="footer-item" (click)="navigateToSettings()">
+        <ion-icon name="settings-outline"></ion-icon>
+        <span class="nav-label">Settings</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="main-content" [ngClass]="platformClasses" (click)="closeSidebar()">
+    <ion-router-outlet></ion-router-outlet>
+  </main>
+</ion-content>

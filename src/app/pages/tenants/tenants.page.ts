@@ -1,6 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { ModalController, AlertController, ToastController } from '@ionic/angular';
 import { AddTenantModalComponent } from './add-tenant-modal/add-tenant-modal.component';
+import { AssignTenantModalComponent } from './assign-tenant-modal/assign-tenant-modal.component';
+import { TenantsService, TenantDto } from '../../services/tenants.service';
+import { TenantAssignmentService } from '../../services/tenant-assignment.service';
 
 interface Tenant {
   name: string;
@@ -21,86 +24,80 @@ interface Tenant {
   standalone: false,
 })
 export class TenantsPage implements OnInit {
-  tenants: Tenant[] = [
-    {
-      name: 'Alice Johnson',
-      unit: 'Unit 2A',
-      email: 'alice.johnson@email.com',
-      phone: '+1-555-0789',
-      property: 'Property P-456',
-      rent: 1200,
-      leaseEnd: '2024-12-31',
-      emergency: 'Bob Johnson (+1-555-0790)',
-      status: 'Active',
-    },
-    {
-      name: 'Michael Chen',
-      unit: 'Unit 5B',
-      email: 'michael.chen@email.com',
-      phone: '+1-555-0456',
-      property: 'Property P-789',
-      rent: 1500,
-      leaseEnd: '2025-02-28',
-      emergency: 'Lisa Chen (+1-555-0457)',
-      status: 'Active',
-    },
-    {
-      name: 'Emma Wilson',
-      unit: 'Unit 3C',
-      email: 'emma.wilson@email.com',
-      phone: '+1-555-0321',
-      property: 'Property P-123',
-      rent: 1100,
-      leaseEnd: '2024-10-15',
-      emergency: 'Tom Wilson (+1-555-0322)',
-      status: 'Expiring Soon',
-    },
-    {
-      name: 'Emma Wilson',
-      unit: 'Unit 3C',
-      email: 'emma.wilson@email.com',
-      phone: '+1-555-0321',
-      property: 'Property P-123',
-      rent: 1100,
-      leaseEnd: '2024-10-15',
-      emergency: 'Tom Wilson (+1-555-0322)',
-      status: 'Expired',
-    },
-  ];
-
-  filteredTenants: Tenant[] = [];
+  tenants: TenantDto[] = [];
+  filteredTenants: TenantDto[] = [];
   searchTerm = '';
   selectedStatus = 'all';
+  isLoading = false;
 
   constructor(
     private modalCtrl: ModalController,
     private alertController: AlertController,
     private toastController: ToastController,
+    private tenantsService: TenantsService,
+    private assignmentService: TenantAssignmentService
   ) {}
 
   ngOnInit() {
-    this.filteredTenants = [...this.tenants];
+    this.loadTenants();
+  }
+
+  private loadTenants() {
+    console.log('Loading tenants from backend...');
+    this.isLoading = true;
+    this.tenantsService.list().subscribe({
+      next: (tenants) => {
+        console.log('Loaded tenants:', tenants);
+        console.log('Number of tenants loaded:', tenants.length);
+        this.tenants = tenants;
+        this.filteredTenants = [...this.tenants];
+        console.log('Updated tenant list:', this.tenants);
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Failed to load tenants:', error);
+        this.presentToast('Failed to load tenants', 'danger');
+        this.isLoading = false;
+      }
+    });
   }
 
   doRefresh(event: any) {
     // Reset filters to defaults
     this.searchTerm = '';
     this.selectedStatus = 'all';
-    // Recompute list (simulate fetching latest data)
-    this.filteredTenants = [...this.tenants];
+    
+    this.loadTenants();
     setTimeout(() => {
       this.filterTenants();
       event.target.complete();
     }, 400);
   }
 
+  // 🔹 Function to open Assign Tenant Modal
+  async openAssignTenantModal() {
+    const modal = await this.modalCtrl.create({
+      component: AssignTenantModalComponent,
+      cssClass: 'centered-modal',
+      backdropDismiss: false,
+    });
+    await modal.present();
+
+    const { data } = await modal.onWillDismiss();
+    if (data && data.success) {
+      this.presentToast('Tenant assigned successfully', 'success');
+      this.loadTenants(); // Refresh from backend
+    }
+  }
+
   filterTenants() {
     const term = this.searchTerm.toLowerCase();
     this.filteredTenants = this.tenants.filter((t) => {
       const matchesSearch =
-        t.name.toLowerCase().includes(term) ||
+        t.fullName.toLowerCase().includes(term) ||
         t.email.toLowerCase().includes(term) ||
-        t.property.toLowerCase().includes(term);
+        t.propertyRef.toLowerCase().includes(term) ||
+        t.unitNo.toLowerCase().includes(term);
 
       const matchesStatus =
         this.selectedStatus === 'all' || t.status === this.selectedStatus;
@@ -120,39 +117,16 @@ export class TenantsPage implements OnInit {
 
     const { data } = await modal.onWillDismiss();
     if (data) {
-      // Add new tenant to the list dynamically
-      const newTenant: Tenant = {
-        name: data.fullName,
-        unit: data.unitNumber,
-        email: data.email,
-        phone: data.phoneNumber,
-        property: data.propertyNumber,
-        rent: parseFloat(data.monthlyRent),
-        leaseEnd: data.leaseEnd,
-        emergency: data.emergencyContact,
-        status: 'Active',
-      };
-      this.tenants.push(newTenant);
-      this.filteredTenants = [...this.tenants];
+      this.presentToast('Tenant created successfully', 'success');
+      this.loadTenants(); // Refresh from backend
     }
   }
 
-  async editTenant(tenant: Tenant) {
+  async editTenant(tenant: TenantDto) {
     const componentProps = {
-      tenant: {
-        fullName: tenant.name,
-        email: tenant.email,
-        phoneNumber: tenant.phone,
-        propertyNumber: tenant.property,
-        unitNumber: tenant.unit,
-        monthlyRent: tenant.rent?.toString?.() ?? `${tenant.rent}`,
-        leaseStart: '',
-        leaseEnd: tenant.leaseEnd,
-        renewalReminder: '',
-        emergencyContact: tenant.emergency,
-        address: ''
-      }
-    } as any;
+      existingTenant: tenant,
+      tenantId: tenant.tenantId || tenant.id
+    };
 
     const modal = await this.modalCtrl.create({
       component: AddTenantModalComponent,
@@ -164,28 +138,15 @@ export class TenantsPage implements OnInit {
 
     const { data } = await modal.onWillDismiss();
     if (data) {
-      const updated: Tenant = {
-        ...tenant,
-        name: data.fullName ?? tenant.name,
-        unit: data.unitNumber ?? tenant.unit,
-        email: data.email ?? tenant.email,
-        phone: data.phoneNumber ?? tenant.phone,
-        property: data.propertyNumber ?? tenant.property,
-        rent: parseFloat(data.monthlyRent ?? tenant.rent),
-        leaseEnd: data.leaseEnd ?? tenant.leaseEnd,
-        emergency: data.emergencyContact ?? tenant.emergency,
-        status: tenant.status,
-      };
-      this.tenants = this.tenants.map(t => (t === tenant ? updated : t));
-      this.filteredTenants = [...this.tenants];
       this.presentToast('Tenant updated', 'success');
+      this.loadTenants(); // Refresh from backend
     }
   }
 
-  async confirmDeleteTenant(tenant: Tenant) {
+  async confirmDeleteTenant(tenant: TenantDto) {
     const alert = await this.alertController.create({
       header: 'Remove Tenant',
-      message: `Are you sure you want to remove ${tenant.name}?`,
+      message: `Are you sure you want to remove ${tenant.fullName}?`,
       buttons: [
         { text: 'Cancel', role: 'cancel' },
         { text: 'Remove', role: 'destructive', handler: () => this.deleteTenant(tenant) },
@@ -194,10 +155,27 @@ export class TenantsPage implements OnInit {
     await alert.present();
   }
 
-  private deleteTenant(tenant: Tenant) {
-    this.tenants = this.tenants.filter(t => t !== tenant);
-    this.filteredTenants = [...this.tenants];
-    this.presentToast('Tenant removed', 'danger');
+  private deleteTenant(tenant: TenantDto) {
+    const tenantId = tenant.tenantId || tenant.id;
+    console.log('Attempting to delete tenant:', tenantId);
+    this.tenantsService.remove(tenantId).subscribe({
+      next: () => {
+        console.log('Tenant deleted successfully');
+        this.presentToast('Tenant removed', 'success');
+        this.loadTenants(); // Refresh from backend
+      },
+      error: (error) => {
+        console.error('Failed to delete tenant:', error);
+        // Extract error message from backend response
+        let errorMsg = 'Unknown error';
+        if (error?.error?.message) {
+          errorMsg = error.error.message;
+        } else if (error?.message) {
+          errorMsg = error.message;
+        }
+        this.presentToast('Failed to remove tenant: ' + errorMsg, 'danger');
+      }
+    });
   }
 
   private async presentToast(message: string, color: 'success' | 'danger' | 'primary' | 'medium') {

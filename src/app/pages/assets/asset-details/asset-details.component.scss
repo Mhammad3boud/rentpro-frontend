@@ -1,0 +1,122 @@
+.details-container {
+  ion-card {
+    margin-bottom: 16px;
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      
+      .title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        
+        ion-icon {
+          color: var(--ion-color-primary);
+        }
+        
+        span {
+          font-weight: 600;
+          color: var(--ion-color-dark);
+        }
+      }
+    }
+    
+    ion-card-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      
+      ion-icon {
+        color: var(--ion-color-primary);
+      }
+    }
+    
+    p {
+      margin: 8px 0;
+      line-height: 1.4;
+      
+      strong {
+        color: var(--ion-color-dark);
+      }
+    }
+    
+    ion-grid {
+      ion-row {
+        ion-col {
+          padding: 4px 8px;
+        }
+      }
+    }
+
+    // Tenant specific styling
+    .tenant-info {
+      margin-top: 8px;
+      padding: 12px;
+      background-color: var(--ion-color-light);
+      border-radius: 8px;
+    }
+
+    .tenant-detail {
+      margin: 4px 0;
+      line-height: 1.5;
+      
+      ion-icon {
+        margin-right: 8px;
+        color: var(--ion-color-medium);
+        font-size: 16px;
+        vertical-align: middle;
+      }
+    }
+
+    .tenant-badge {
+      margin-right: 8px;
+      margin-bottom: 4px;
+    }
+
+    .no-tenant {
+      text-align: center;
+      padding: 20px;
+      
+      .no-tenant-text {
+        color: var(--ion-color-medium);
+        font-style: italic;
+        margin: 0;
+        
+        ion-icon {
+          font-size: 24px;
+          margin-right: 8px;
+          vertical-align: middle;
+        }
+      }
+    }
+
+    h3 {
+      display: flex;
+      align-items: center;
+      margin: 12px 0 8px 0;
+      color: var(--ion-color-dark);
+    }
+  }
+}
+
+ion-header {
+  ion-toolbar {
+    --background: var(--ion-color-primary);
+    --color: white;
+    
+    ion-title {
+      font-weight: 600;
+    }
+    
+    ion-button {
+      --color: white;
+    }
+  }
+}
+
+ion-content {
+  --background: var(--ion-color-light);
+}

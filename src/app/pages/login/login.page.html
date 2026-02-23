@@ -6,8 +6,8 @@
       </div>
 
       <ion-item class="input-item">
-        <ion-icon slot="start" name="person-outline"></ion-icon>
-        <ion-input placeholder="Username" [(ngModel)]="username" name="username" required>
+        <ion-icon slot="start" name="mail-outline"></ion-icon>
+        <ion-input placeholder="Email" [(ngModel)]="email" name="email" required>
         </ion-input>
       </ion-item>
 
@@ -28,6 +28,14 @@
       <ion-button expand="block" class="login-btn" (click)="login()">
         Login
       </ion-button>
+
+      <div class="register-link">
+        <p>Don't have an account? 
+          <ion-button fill="clear" (click)="goToRegister()">
+            Sign Up
+          </ion-button>
+        </p>
+      </div>
     </div>
   </div>
 </ion-content>

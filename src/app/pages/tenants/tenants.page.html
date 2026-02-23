@@ -1,25 +1,27 @@
 <ion-header>
   <ion-toolbar>
     <ion-title>Tenant Management</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="openAddTenantModal()">
+        <ion-icon slot="icon-only" name="add-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content class="tenants-page">
 
-  <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
-    <ion-refresher-content color="primary" refreshing-spinner="crescent" pullingIcon="refresh"></ion-refresher-content>
+  <ion-refresher slot="fixed" pullMax="100" pullMin="60 " (ionRefresh)="doRefresh($event)">
+    <ion-refresher-content refreshing-spinner="dots" pullingIcon="refresh"></ion-refresher-content>
   </ion-refresher>
 
   <div class="header-section">
-    <!-- <div>
-      <h1>Tenant Management</h1>
-      <p>Manage your tenants and lease information</p>
-    </div> -->
-
-    <ion-button color="success" shape="round" class="add-btn" (click)="openAddTenantModal()">
-      <ion-icon slot="start" name="add-outline"></ion-icon>
-      Add Tenant
-    </ion-button>
+    <div class="action-buttons">
+      <ion-button color="primary" shape="round" class="assign-btn" (click)="openAssignTenantModal()">
+        <ion-icon slot="start" name="link-outline"></ion-icon>
+        Assign Tenant
+      </ion-button>
+    </div>
   </div>
 
   <div class="filter-section">
@@ -33,8 +35,8 @@
       <ion-icon name="funnel-outline"></ion-icon>
       <ion-select interface="popover" [(ngModel)]="selectedStatus" (ionChange)="filterTenants()">
         <ion-select-option value="all">All Status</ion-select-option>
-        <ion-select-option value="Active">Active</ion-select-option>
-        <ion-select-option value="Expiring Soon">Expiring Soon</ion-select-option>
+        <ion-select-option value="ACTIVE">Active</ion-select-option>
+        <ion-select-option value="INACTIVE">Inactive</ion-select-option>
       </ion-select>
     </div>
   </div>
@@ -45,30 +47,31 @@
         <ion-card>
           <ion-card-header>
             <div class="card-header">
+              <ion-badge [color]="tenant.status === 'ACTIVE' ? 'success' : 'medium'" class="status-badge-top">
+                {{ tenant.status === 'ACTIVE' ? 'Active' : 'Inactive' }}
+              </ion-badge>
               <div class="tenant-info">
                 <ion-icon name="person-circle-outline"></ion-icon>
                 <div>
-                  <h2>{{ tenant.name }}</h2>
-                  <p>{{ tenant.unit }}</p>
+                  <h2>{{ tenant.fullName }}</h2>
+                  <p>{{ tenant.propertyRef }} - {{ tenant.unitNo }}</p>
                 </div>
               </div>
-
-              <ion-badge [color]="tenant.status === 'Active' ? 'success' : 'warning'" class="status-badge">
-                {{ tenant.status }}
-              </ion-badge>
             </div>
           </ion-card-header>
 
           <ion-card-content>
             <p><ion-icon name="mail-outline"></ion-icon> {{ tenant.email }}</p>
             <p><ion-icon name="call-outline"></ion-icon> {{ tenant.phone }}</p>
-            <p><ion-icon name="location-outline"></ion-icon> {{ tenant.property }}</p>
+            <p><ion-icon name="location-outline"></ion-icon> {{ tenant.address || tenant.propertyRef || 'No address' }}</p>
 
             <hr />
 
-            <p><strong>Monthly Rent:</strong> TZS {{ tenant.rent }}</p>
-            <p><strong>Lease End:</strong> {{ tenant.leaseEnd }}</p>
-            <p><strong>Emergency:</strong> {{ tenant.emergency }}</p>
+            <p><strong>Monthly Rent:</strong> {{ tenant.monthlyRent > 0 ? '$' + tenant.monthlyRent : 'Not assigned' }}</p>
+            <p><strong>Lease Start:</strong> {{ tenant.leaseStart ? (tenant.leaseStart | date:'mediumDate') : 'N/A' }}</p>
+            <p><strong>Lease End:</strong> {{ tenant.leaseEnd ? (tenant.leaseEnd | date:'mediumDate') : 'N/A' }}</p>
+            <p><strong>Property:</strong> {{ tenant.propertyRef || 'Not assigned' }}</p>
+            <p><strong>Emergency:</strong> {{ tenant.emergencyName }} {{ tenant.emergencyPhone ? '(' + tenant.emergencyPhone + ')' : '' }}</p>
 
             <div class="card-actions">
               <ion-button size="small" fill="outline" color="medium" (click)="editTenant(tenant)">

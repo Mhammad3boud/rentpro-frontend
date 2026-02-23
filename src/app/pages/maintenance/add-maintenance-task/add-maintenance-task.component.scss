@@ -2,6 +2,23 @@ ion-content {
   --background: var(--ion-background-color);
 }
 
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  
+  ion-spinner {
+    margin-bottom: 1rem;
+  }
+  
+  p {
+    color: var(--ion-text-color);
+    opacity: 0.7;
+  }
+}
+
 .action-buttons {
   display: flex;
   gap: 1rem;

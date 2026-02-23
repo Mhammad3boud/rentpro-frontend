@@ -1,17 +1,8 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { ModalController } from '@ionic/angular';
+import { PropertiesService, CreatePropertyRequest, UnitInfo } from '../../../services/properties.service';
 
-export interface CreatePropertyRequest {
-  title: string;
-  category: 'RENTAL' | 'FARM' | 'LAND' | 'WAREHOUSE' | 'OFFICE' | 'OTHER';
-  notes?: string | null;
-  structureType: 'STANDALONE' | 'MULTI_UNIT';
-  unitCount: number;
-  address?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  meta?: Record<string, any>;
-}
+export type AssetStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' | 'VACANT';
 
 @Component({
   selector: 'app-add-asset',
@@ -19,121 +10,153 @@ export interface CreatePropertyRequest {
   styleUrls: ['./add-asset.component.scss'],
   standalone: false
 })
-export class AddAssetComponent {
+export class AddAssetComponent implements OnInit {
   @Input() asset: any = {
-    assetType: 'Property',
+    title: '',
+    propertyType: 'STANDALONE',
+    propertyUsage: 'RESIDENTIAL',
+    address: '',
     region: '',
-    district: '',
-    ward: '',
-    blockNo: '',
-    plotNo: '',
-    houseNo: '',
-    street: '',
     postcode: '',
-    areaName: '',
-    ownerName: '',
-    ownerPhone: '',
-    ownerEmail: '',
-    usage: 'Rented',
-    waterMeter: '',
-    electricityMeter: '',
-    gpsLatitude: '',
-    gpsLongitude: '',
+    latitude: '',
+    longitude: '',
+    waterMeterNumber: '',
+    electricityMeterNumber: '',
     notes: '',
-    unitCount: 1,          // add this in your form later if you want multi-unit
-    structureType: 'STANDALONE' // add this later if you want a dropdown
+    units: ['Unit 1'], // For multi-unit properties
+    status: 'ACTIVE' as AssetStatus
   };
 
   locating = false;
+  showUnits = false;
+  isResidentialProperty = true;
+  private _cachedLeasePreview: UnitInfo[] | null = null;
 
-  constructor(private modalCtrl: ModalController) {}
+  constructor(private modalCtrl: ModalController, private propertiesService: PropertiesService) {}
+
+  ngOnInit() {
+    // Initialize showUnits based on the current property type (for edit mode)
+    this.showUnits = this.asset.propertyType === 'MULTI_UNIT';
+    
+    // Initialize residential property flag
+    this.isResidentialProperty = ['STANDALONE', 'MULTI_UNIT'].includes(this.asset.propertyType);
+    
+    // Initialize status from existing asset meta if in edit mode
+    if (this.isEditMode && this.asset.meta) {
+      this.asset.status = (this.asset.meta.status || 'ACTIVE') as AssetStatus;
+    }
+  }
+
+  get isEditMode(): boolean {
+    return !!this.asset.id;
+  }
 
   close() {
     this.modalCtrl.dismiss(null);
+  }
+
+  onPropertyTypeChange() {
+    const newShowUnits = this.asset.propertyType === 'MULTI_UNIT';
+    
+    // Only update if the value actually changed
+    if (this.showUnits !== newShowUnits) {
+      this.showUnits = newShowUnits;
+      
+      // Initialize units for multi-unit properties
+      if (newShowUnits && this.asset.units.length === 0) {
+        this.asset.units = ['Unit 1', 'Unit 2'];
+      }
+    }
+    
+    // Update residential property flag
+    this.isResidentialProperty = ['STANDALONE', 'MULTI_UNIT'].includes(this.asset.propertyType);
+    
+    // Smart property usage defaults - only update if not already set
+    if (!this.asset.propertyUsage) {
+      if (this.asset.propertyType === 'FARM') {
+        this.asset.propertyUsage = 'AGRICULTURAL';
+      } else if (['WAREHOUSE', 'INDUSTRIAL'].includes(this.asset.propertyType)) {
+        this.asset.propertyUsage = 'INDUSTRIAL';
+      } else if (['OFFICE', 'COMMERCIAL'].includes(this.asset.propertyType)) {
+        this.asset.propertyUsage = 'COMMERCIAL';
+      }
+    }
+  }
+
+  addUnit() {
+    const unitNumber = this.asset.units.length + 1;
+    this.asset.units.push(`Unit ${unitNumber}`);
+  }
+
+  removeUnit(index: number) {
+    if (this.asset.units.length > 1) {
+      this.asset.units.splice(index, 1);
+    }
   }
 
   private clean(v: any) {
     return (v ?? '').toString().trim();
   }
 
-  private buildAddress(): string {
-    const parts = [
-      this.clean(this.asset.houseNo),
-      this.clean(this.asset.street),
-      this.clean(this.asset.areaName),
-      this.clean(this.asset.ward),
-      this.clean(this.asset.district),
-      this.clean(this.asset.region),
-      this.clean(this.asset.postcode),
-    ].filter(Boolean);
-    return parts.join(', ');
-  }
-
-  private mapCategory(assetType: string): CreatePropertyRequest['category'] {
-    const t = this.clean(assetType).toUpperCase();
-    if (t === 'FARM') return 'FARM';
-    // your backend default is RENTAL, so Property -> RENTAL
-    return 'RENTAL';
-  }
-
-  private mapStructureType(raw: any): CreatePropertyRequest['structureType'] {
-    const s = this.clean(raw).toUpperCase();
-    return s === 'MULTI_UNIT' ? 'MULTI_UNIT' : 'STANDALONE';
-  }
-
   private buildRequest(): CreatePropertyRequest {
-    const latRaw = this.clean(this.asset.gpsLatitude);
-    const lngRaw = this.clean(this.asset.gpsLongitude);
+    // Map property usage to backend category
+    const categoryMap: Record<string, string> = {
+      'RESIDENTIAL': 'RENTAL',
+      'COMMERCIAL': 'OFFICE',
+      'MIXED': 'RENTAL',
+      'AGRICULTURAL': 'FARM',
+      'INDUSTRIAL': 'WAREHOUSE'
+    };
 
-    const structureType = this.mapStructureType(this.asset.structureType);
-    const unitCountNum = Number(this.asset.unitCount ?? 1);
-
-    // title must be NOT BLANK in backend
-    const title = this.clean(this.asset.areaName)
-      || `${this.clean(this.asset.blockNo)} ${this.clean(this.asset.plotNo)}`.trim()
-      || 'Untitled Property';
+    const meta: Record<string, unknown> = {
+      propertyType: this.asset.propertyType,
+      propertyUsage: this.asset.propertyUsage,
+      region: this.clean(this.asset.region),
+      postcode: this.clean(this.asset.postcode),
+      waterMeterNumber: this.clean(this.asset.waterMeterNumber),
+      electricityMeterNumber: this.clean(this.asset.electricityMeterNumber),
+      status: this.asset.status
+    };
 
     return {
-      title,
-      category: this.mapCategory(this.asset.assetType),
-      notes: this.clean(this.asset.notes) || null,
-      structureType,
-      unitCount: structureType === 'STANDALONE' ? 1 : Math.max(1, unitCountNum),
-      address: this.buildAddress() || null,
-      latitude: latRaw ? Number(latRaw) : null,
-      longitude: lngRaw ? Number(lngRaw) : null,
-
-      // EVERYTHING from your big form goes into meta (jsonb)
-      meta: {
-        // raw form fields (keep exactly as you want)
-        assetType: this.clean(this.asset.assetType),
-        region: this.clean(this.asset.region),
-        district: this.clean(this.asset.district),
-        ward: this.clean(this.asset.ward),
-        blockNo: this.clean(this.asset.blockNo),
-        plotNo: this.clean(this.asset.plotNo),
-        houseNo: this.clean(this.asset.houseNo),
-        street: this.clean(this.asset.street),
-        postcode: this.clean(this.asset.postcode),
-        areaName: this.clean(this.asset.areaName),
-
-        ownerName: this.clean(this.asset.ownerName),
-        ownerPhone: this.clean(this.asset.ownerPhone),
-        ownerEmail: this.clean(this.asset.ownerEmail),
-
-        usage: this.clean(this.asset.usage),
-        waterMeter: this.clean(this.asset.waterMeter),
-        electricityMeter: this.clean(this.asset.electricityMeter),
-
-        gpsLatitude: this.clean(this.asset.gpsLatitude),
-        gpsLongitude: this.clean(this.asset.gpsLongitude),
-      }
+      title: this.clean(this.asset.title),
+      category: categoryMap[this.asset.propertyUsage] || 'RENTAL',
+      structureType: this.asset.propertyType,
+      unitCount: this.asset.propertyType === 'MULTI_UNIT' ? this.asset.units.length : 1,
+      units: this.asset.propertyType === 'MULTI_UNIT' ? this.asset.units : undefined,
+      address: this.clean(this.asset.address) || undefined,
+      latitude: this.clean(this.asset.latitude) ? Number(this.asset.latitude) : undefined,
+      longitude: this.clean(this.asset.longitude) ? Number(this.asset.longitude) : undefined,
+      notes: this.clean(this.asset.notes) || undefined,
+      meta: Object.keys(meta).some(key => meta[key] !== undefined && meta[key] !== '') ? meta : undefined
     };
   }
 
-  // keep your HTML button (click)="addAsset()"
+  getLeasePreview(): UnitInfo[] {
+    if (!this.asset.title) return [];
+    
+    // Cache the result to avoid recomputation
+    if (!this._cachedLeasePreview) {
+      this._cachedLeasePreview = this.propertiesService.generateLeaseNames(
+        this.asset.title,
+        this.asset.propertyType,
+        this.asset.units
+      );
+    }
+    return this._cachedLeasePreview;
+  }
+
   addAsset() {
     const body = this.buildRequest();
+    
+    // Generate lease names for preview and cache the result
+    this._cachedLeasePreview = this.propertiesService.generateLeaseNames(
+      this.asset.title,
+      this.asset.propertyType,
+      this.asset.units
+    );
+    console.log('Generated lease names:', this._cachedLeasePreview);
+    
     this.modalCtrl.dismiss(body);
   }
 
@@ -144,8 +167,8 @@ export class AddAssetComponent {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        this.asset.gpsLatitude = latitude.toString();
-        this.asset.gpsLongitude = longitude.toString();
+        this.asset.latitude = latitude.toString();
+        this.asset.longitude = longitude.toString();
         this.locating = false;
       },
       () => { this.locating = false; },

@@ -20,12 +20,26 @@
       margin: 0.3rem 0 0;
     }
 
-    .add-btn {
-      --background: var(--ion-color-success);
-      --color: var(--ion-color-success-contrast, #fff);
-      font-weight: 600;
-      border-radius: 8px;
-      text-transform: uppercase;
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      
+      .add-btn {
+        --background: var(--ion-color-success);
+        --color: var(--ion-color-success-contrast, #fff);
+        font-weight: 600;
+        border-radius: 8px;
+        text-transform: uppercase;
+      }
+      
+      .assign-btn {
+        --background: var(--ion-color-primary);
+        --color: var(--ion-color-primary-contrast, #fff);
+        font-weight: 600;
+        border-radius: 8px;
+        text-transform: uppercase;
+      }
     }
   }
 
@@ -57,6 +71,7 @@
         outline: none;
         font-size: 0.95rem;
         background: transparent;
+        color: var(--ion-text-color);
       }
     }
 
@@ -94,8 +109,16 @@
 
     .card-header {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
+      gap: 0.5rem;
+
+      .status-badge-top {
+        align-self: flex-end;
+        border-radius: 999px;
+        padding: 4px 8px;
+        font-weight: 600;
+        font-size: 0.75rem;
+      }
 
       .tenant-info {
         display: flex;

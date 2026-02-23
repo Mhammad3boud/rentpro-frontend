@@ -1,33 +1,70 @@
 <ion-header>
   <ion-toolbar>
     <ion-title>Assets Management</ion-title>
+
+    <ion-buttons slot="end">
+      <ion-button (click)="openAddAssetModal()">
+        <ion-icon name="add-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content class="assets-page">
-  <ion-refresher slot="fixed" pullMax="100" pullMin="60 " (ionRefresh)="doRefresh($event)">
-    <ion-refresher-content color="primary" refreshing-spinner="crescent" pullingIcon="refresh"></ion-refresher-content>
+  <ion-refresher slot="fixed" pullMax="100" pullMin="60" (ionRefresh)="doRefresh($event)">
+    <ion-refresher-content refreshing-spinner="dots" pullingIcon="refresh"></ion-refresher-content>
   </ion-refresher>
-  <div class="asset-header">
-    <ion-button class="add-btn" color="success" shape="round" (click)="openAddAssetModal()">
-      <ion-icon slot="start" name="add-outline"></ion-icon>
-      ADD ASSET
-    </ion-button>
-  </div>
 
   <div class="filter-bar">
     <div class="search-container">
       <ion-icon name="search-outline"></ion-icon>
-      <input type="text" placeholder="Search by owner name, plot number, or area..." [(ngModel)]="searchTerm"
-        (input)="filterAssets()" />
+
+      <input
+        type="text"
+        placeholder="Search by property name, location"
+        [(ngModel)]="searchTerm"
+        (input)="filterAssets()"/>
     </div>
 
     <div class="filter-container">
       <ion-icon name="funnel-outline"></ion-icon>
-      <ion-select interface="popover" [(ngModel)]="selectedType" (ionChange)="filterAssets()">
+
+      <ion-select
+        interface="popover"
+        [(ngModel)]="selectedType"
+        (ionChange)="filterAssets()"
+      >
         <ion-select-option value="all">All Types</ion-select-option>
-        <ion-select-option value="Property">Property</ion-select-option>
+
+        <ion-select-option value="Standalone Property"
+          >Standalone Property</ion-select-option
+        >
+
+        <ion-select-option value="Multi-Unit Property"
+          >Multi-Unit Property</ion-select-option
+        >
+
         <ion-select-option value="Farm">Farm</ion-select-option>
+
+        <ion-select-option value="Land">Land</ion-select-option>
+
+        <ion-select-option value="Warehouse">Warehouse</ion-select-option>
+
+        <ion-select-option value="Office Building"
+          >Office Building</ion-select-option
+        >
+
+        <ion-select-option value="Commercial Property"
+          >Commercial Property</ion-select-option
+        >
+
+        <ion-select-option value="Industrial Property"
+          >Industrial Property</ion-select-option
+        >
+
+        <ion-select-option value="Other Property"
+          >Other Property</ion-select-option
+        >
       </ion-select>
     </div>
   </div>
@@ -39,26 +76,53 @@
           <ion-card-header>
             <div class="card-header">
               <div class="title">
-                <ion-icon [name]="asset.type === 'Farm' ? 'leaf-outline' : 'business-outline'"></ion-icon>
+                <ion-icon [name]="getPropertyIcon(asset.type)"></ion-icon>
+
                 <span>{{ asset.type }}</span>
               </div>
+
               <ion-badge color="success">Active</ion-badge>
             </div>
+
             <h3>{{ asset.name }}</h3>
           </ion-card-header>
 
           <ion-card-content>
-            <p><ion-icon name="location-outline"></ion-icon> {{ asset.location }}</p>
+            <p>
+              <ion-icon name="location-outline"></ion-icon> {{ asset.location }}
+            </p>
+
             <p><strong>Owner:</strong> {{ asset.owner }}</p>
-            <p><strong>Phone:</strong> {{ asset.phone }}</p>
+
             <p><strong>Usage:</strong> {{ asset.usage }}</p>
+
             <p><strong>Block/Plot:</strong> {{ asset.block }}</p>
 
             <div class="card-actions">
-              <ion-button size="small" fill="outline" color="medium" (click)="editAsset(asset)">
+              <ion-button
+                size="small"
+                fill="outline"
+                color="primary"
+                (click)="viewAsset(asset)"
+              >
+                <ion-icon slot="start" name="eye-outline"></ion-icon>Details
+              </ion-button>
+
+              <ion-button
+                size="small"
+                fill="outline"
+                color="medium"
+                (click)="editAsset(asset)"
+              >
                 <ion-icon slot="start" name="create-outline"></ion-icon>Edit
               </ion-button>
-              <ion-button size="small" fill="outline" color="danger" (click)="confirmDelete(asset)">
+
+              <ion-button
+                size="small"
+                fill="outline"
+                color="danger"
+                (click)="confirmDelete(asset)"
+              >
                 <ion-icon slot="start" name="trash-outline"></ion-icon>Delete
               </ion-button>
             </div>
@@ -67,5 +131,4 @@
       </ion-col>
     </ion-row>
   </ion-grid>
-
 </ion-content>

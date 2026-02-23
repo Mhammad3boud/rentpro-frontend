@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { AuthService } from './services/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -7,7 +8,8 @@ import { Component } from '@angular/core';
   standalone: false,
 })
 export class AppComponent {
-  constructor() {
+  constructor(private authService: AuthService) {
+    // Apply theme on app start
     const savedTheme = localStorage.getItem('theme');
     const isDark = savedTheme === 'dark';
     document.body.classList.remove('dark', 'light');

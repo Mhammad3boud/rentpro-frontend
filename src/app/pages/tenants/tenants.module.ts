@@ -6,6 +6,7 @@ import { IonicModule } from '@ionic/angular';
 import { TenantsPageRoutingModule } from './tenants-routing.module';
 import { TenantsPage } from './tenants.page';
 import { AddTenantModalComponent } from './add-tenant-modal/add-tenant-modal.component';
+import { AssignTenantModalComponent } from './assign-tenant-modal/assign-tenant-modal.component';
 
 @NgModule({
   imports: [
@@ -16,7 +17,8 @@ import { AddTenantModalComponent } from './add-tenant-modal/add-tenant-modal.com
   ],
   declarations: [
     TenantsPage,
-    AddTenantModalComponent
+    AddTenantModalComponent,
+    AssignTenantModalComponent
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })

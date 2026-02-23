@@ -1,17 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { ModalController, AlertController, ToastController } from '@ionic/angular';
+import { ModalController, AlertController, ToastController, LoadingController } from '@ionic/angular';
 import { RecordPaymentModalComponent } from './record-payment-modal/record-payment-modal.component';
-
-interface RentRecord {
-  tenant: string;
-  property: string;
-  month: string;
-  dueDate: string;
-  amount: number;
-  status: string;
-  paidDate?: string;
-  method?: string;
-}
+import { RentSimpleService, RentRecord, CreatePaymentRequest } from '../../../api/rent-simple.service';
 
 @Component({
   selector: 'app-rent-tracking',
@@ -20,71 +10,101 @@ interface RentRecord {
   standalone: false,
 })
 export class RentTrackingPage implements OnInit {
-  records: RentRecord[] = [
-    {
-      tenant: 'Alice Johnson',
-      property: 'P-456/2A',
-      month: '2024-09',
-      dueDate: '2024-09-01',
-      amount: 1200,
-      status: 'Paid',
-      paidDate: '2024-09-01',
-      method: 'Bank Transfer',
-    },
-    {
-      tenant: 'Michael Chen',
-      property: 'P-789/5B',
-      month: '2024-09',
-      dueDate: '2024-09-01',
-      amount: 1500,
-      status: 'Paid',
-      paidDate: '2024-09-03',
-      method: 'Check',
-    },
-    {
-      tenant: 'Emma Wilson',
-      property: 'P-123/3C',
-      month: '2024-09',
-      dueDate: '2024-09-01',
-      amount: 1100,
-      status: 'Overdue',
-    },
-    {
-      tenant: 'Alice Johnson',
-      property: 'P-456/2A',
-      month: '2024-10',
-      dueDate: '2024-10-01',
-      amount: 1200,
-      status: 'Pending',
-    },
-  ];
+  records: RentRecord[] = [];
 
   filteredRecords: RentRecord[] = [];
   searchTerm = '';
   selectedStatus = 'all';
   selectedMonth = 'all';
 
+  // Summary stats
+  totalRevenue = 0;
+  pendingAmount = 0;
+  overdueAmount = 0;
+  activeLeases = 0;
+
+  // Dynamic month options
+  monthOptions: { value: string; label: string }[] = [];
+
   constructor(
     private modalCtrl: ModalController,
     private alertController: AlertController,
     private toastController: ToastController,
+    private loadingController: LoadingController,
+    private rentService: RentSimpleService,
   ) {}
 
-  ngOnInit() {
-    this.filteredRecords = [...this.records];
+  async ngOnInit() {
+    await this.loadRentRecords();
   }
 
-  doRefresh(event: any) {
+  async doRefresh(event: any) {
     // Reset filters to defaults
     this.searchTerm = '';
     this.selectedStatus = 'all';
     this.selectedMonth = 'all';
-    // Simulate fetch and recompute
-    this.filteredRecords = [...this.records];
-    setTimeout(() => {
-      this.filterRecords();
+    
+    try {
+      await this.loadRentRecords();
+    } catch (error) {
+      console.error('Error refreshing rent records:', error);
+      this.presentToast('Failed to refresh data', 'danger');
+    } finally {
       event.target.complete();
-    }, 400);
+    }
+  }
+
+  async loadRentRecords() {
+    const loading = await this.loadingController.create({
+      message: 'Loading rent records...'
+    });
+    await loading.present();
+
+    try {
+      this.records = await this.rentService.getRentRecords();
+      this.filteredRecords = [...this.records];
+      this.calculateSummary();
+      this.generateMonthOptions();
+      this.filterRecords();
+    } catch (error) {
+      console.error('Error loading rent records:', error);
+      this.presentToast('Failed to load rent records', 'danger');
+    } finally {
+      await loading.dismiss();
+    }
+  }
+
+  calculateSummary() {
+    // Calculate total revenue (paid amounts)
+    this.totalRevenue = this.records
+      .filter(r => r.status === 'Paid' || r.status === 'Partial')
+      .reduce((sum, r) => sum + (r.amountPaid || 0), 0);
+
+    // Calculate pending amount (including partial remaining)
+    this.pendingAmount = this.records
+      .filter(r => r.status === 'Pending' || r.status === 'Partial')
+      .reduce((sum, r) => sum + (r.amount - (r.amountPaid || 0)), 0);
+
+    // Calculate overdue amount
+    this.overdueAmount = this.records
+      .filter(r => r.status === 'Overdue')
+      .reduce((sum, r) => sum + (r.amount - (r.amountPaid || 0)), 0);
+
+    // Count unique active leases
+    const uniqueLeases = new Set(this.records.map(r => r.leaseId));
+    this.activeLeases = uniqueLeases.size;
+  }
+
+  generateMonthOptions() {
+    // Get unique months from records
+    const uniqueMonths = [...new Set(this.records.map(r => r.month))].sort().reverse();
+    
+    this.monthOptions = uniqueMonths.map(month => {
+      const [year, monthNum] = month.split('-');
+      const date = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+      const label = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      return { value: month, label };
+    });
   }
 
   filterRecords() {
@@ -109,6 +129,7 @@ export class RentTrackingPage implements OnInit {
     switch (status) {
       case 'Paid': return 'success';
       case 'Pending': return 'warning';
+      case 'Partial': return 'tertiary';
       case 'Overdue': return 'danger';
       default: return 'medium';
     }
@@ -125,41 +146,117 @@ export class RentTrackingPage implements OnInit {
 
     const { data } = await modal.onWillDismiss();
     if (data) {
-      const newRecord: RentRecord = {
-        tenant: data.tenantName,
-        property: `${data.propertyNumber}/${data.unitNumber}`,
-        month: data.month,
-        dueDate: data.dueDate,
-        amount: parseFloat(data.amount),
-        paidDate: data.paidDate,
-        method: data.paymentMethod,
-        status: data.paidDate ? 'Paid' : 'Pending',
+      // Create payment via backend service
+      try {
+        const monthYear = data.month || new Date().toISOString().slice(0, 7);
+        const paymentRequest: CreatePaymentRequest = {
+          leaseId: data.leaseId,
+          monthYear: monthYear,
+          amountExpected: parseFloat(data.amount),
+          amountPaid: parseFloat(data.amount),
+          dueDate: data.dueDate || `${monthYear}-01`,
+          paidDate: data.paidDate || new Date().toISOString().slice(0, 10),
+          paymentMethod: data.paymentMethod || 'CASH'
+        };
+        
+        await this.rentService.createPayment(paymentRequest);
+        await this.loadRentRecords(); // Refresh the records
+        this.presentToast('Payment recorded successfully', 'success');
+      } catch (error) {
+        console.error('Error creating payment:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to record payment';
+        this.presentToast(errorMessage, 'danger');
+      }
+    }
+  }
+
+  async markPaid(record: RentRecord) {
+    // Prompt user for payment amount
+    const alert = await this.alertController.create({
+      header: 'Record Payment',
+      message: `Enter payment amount for ${record.tenant}`,
+      inputs: [
+        {
+          name: 'amount',
+          type: 'number',
+          placeholder: 'Amount paid',
+          value: record.amount.toString(),
+          min: 0
+        },
+        {
+          name: 'paymentMethod',
+          type: 'text',
+          placeholder: 'Payment method (e.g., CASH, BANK_TRANSFER)',
+          value: 'CASH'
+        }
+      ],
+      buttons: [
+        {
+          text: 'Cancel',
+          role: 'cancel'
+        },
+        {
+          text: 'Full Payment',
+          handler: () => {
+            this.processPayment(record, record.amount, 'CASH');
+            return true;
+          }
+        },
+        {
+          text: 'Record',
+          handler: (data) => {
+            const amount = parseFloat(data.amount) || 0;
+            const method = data.paymentMethod?.toUpperCase() || 'CASH';
+            if (amount <= 0) {
+              this.presentToast('Please enter a valid amount', 'danger');
+              return false;
+            }
+            this.processPayment(record, amount, method);
+            return true;
+          }
+        }
+      ]
+    });
+    await alert.present();
+  }
+
+  private async processPayment(record: RentRecord, amount: number, method: string) {
+    try {
+      const paymentRequest: CreatePaymentRequest = {
+        leaseId: record.leaseId,
+        monthYear: record.month,
+        amountExpected: record.amount,
+        amountPaid: amount,
+        dueDate: record.dueDate,
+        paidDate: new Date().toISOString().slice(0, 10),
+        paymentMethod: method as any
       };
-
-      this.records.push(newRecord);
-      this.filteredRecords = [...this.records];
+      
+      await this.rentService.createPayment(paymentRequest);
+      await this.loadRentRecords();
+      
+      if (amount >= record.amount) {
+        this.presentToast('Full payment recorded', 'success');
+      } else {
+        this.presentToast(`Partial payment of TZS ${amount} recorded`, 'success');
+      }
+    } catch (error) {
+      console.error('Error recording payment:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to record payment';
+      this.presentToast(errorMessage, 'danger');
     }
   }
 
-  markPaid(record: RentRecord) {
-    const today = new Date().toISOString().slice(0, 10);
-    record.status = 'Paid';
-    record.paidDate = today;
-    if (!record.method || record.method === '-') {
-      record.method = 'Manual';
+  async markUnpaid(record: RentRecord) {
+    try {
+      // Call delete payment API (once implemented)
+      // For now, just show a message
+      this.presentToast('Delete functionality not yet available in backend', 'medium');
+    } catch (error) {
+      console.error('Error marking payment as unpaid:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to mark payment as unpaid';
+      this.presentToast(errorMessage, 'danger');
     }
-    // Refresh the filtered view to reflect changes and status filters
-    this.filterRecords();
-  }
-
-  markUnpaid(record: RentRecord) {
-    record.status = 'Pending';
-    record.paidDate = '';
-    if (!record.method || record.method === 'Manual') {
-      record.method = '-';
-    }
-    this.filterRecords();
-    this.presentToast('Marked as unpaid', 'medium');
   }
 
   async editPayment(record: RentRecord) {
@@ -168,6 +265,7 @@ export class RentTrackingPage implements OnInit {
       component: RecordPaymentModalComponent,
       componentProps: {
         preset: {
+          leaseId: record.leaseId,
           tenantName: record.tenant,
           propertyNumber,
           unitNumber,
@@ -185,16 +283,26 @@ export class RentTrackingPage implements OnInit {
 
     const { data } = await modal.onWillDismiss();
     if (data) {
-      record.tenant = data.tenantName || record.tenant;
-      record.property = `${data.propertyNumber}/${data.unitNumber}`;
-      record.month = data.month || record.month;
-      record.dueDate = data.dueDate || record.dueDate;
-      record.amount = parseFloat(data.amount || record.amount);
-      record.paidDate = data.paidDate || '';
-      record.method = data.paymentMethod || '';
-      record.status = data.paidDate ? 'Paid' : record.status; // keep existing unless paid now
-      this.filterRecords();
-      this.presentToast('Payment updated', 'success');
+      try {
+        const monthYear = data.month || record.month;
+        const paymentRequest: CreatePaymentRequest = {
+          leaseId: data.leaseId || record.leaseId,
+          monthYear: monthYear,
+          amountExpected: parseFloat(data.amount || String(record.amount)),
+          amountPaid: parseFloat(data.amount || String(record.amount)),
+          dueDate: data.dueDate || record.dueDate || `${monthYear}-01`,
+          paidDate: data.paidDate || new Date().toISOString().slice(0, 10),
+          paymentMethod: data.paymentMethod || record.method || 'CASH'
+        };
+        
+        await this.rentService.createPayment(paymentRequest);
+        await this.loadRentRecords(); // Refresh the records
+        this.presentToast('Payment updated', 'success');
+      } catch (error) {
+        console.error('Error updating payment:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to update payment';
+        this.presentToast(errorMessage, 'danger');
+      }
     }
   }
 
@@ -210,10 +318,10 @@ export class RentTrackingPage implements OnInit {
     await alert.present();
   }
 
-  private deleteRecord(record: RentRecord) {
-    this.records = this.records.filter(r => r !== record);
-    this.filterRecords();
-    this.presentToast('Payment deleted', 'danger');
+  private async deleteRecord(record: RentRecord) {
+    // For now, we'll just show a message since the backend doesn't have a delete payment endpoint
+    // In a real implementation, you would call a delete payment API
+    this.presentToast('Delete functionality not yet available in backend', 'medium');
   }
 
   private parseProperty(prop: string): { propertyNumber: string; unitNumber: string } {

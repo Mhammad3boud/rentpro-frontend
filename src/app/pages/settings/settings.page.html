@@ -10,31 +10,108 @@
 </ion-header>
 
 <ion-content>
-  <div class="profile-section ion-text-center ion-padding">
-    <div class="profile-picture" (click)="changeProfilePicture()">
-      <img [src]="profilePicture || 'assets/icon/icon-512x512.png'" alt="Profile">
-      <ion-icon name="camera" class="camera-icon"></ion-icon>
-    </div>
-    <h2>{{ userName || 'User' }}</h2>
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-container">
+    <ion-spinner name="crescent"></ion-spinner>
+    <p>Loading profile...</p>
   </div>
 
-  <ion-card>
-    <ion-card-content class="ion-no-padding">
-      <ion-list lines="none">
-        <ion-item button (click)="changePassword()">
-          <ion-icon name="key-outline" slot="start"></ion-icon>
-          <ion-label>Change Password</ion-label>
-          <ion-icon name="chevron-forward" slot="end"></ion-icon>
-        </ion-item>
-        <ion-item>
-          <ion-icon name="moon-outline" slot="start"></ion-icon>
-          <ion-label>Dark Mode</ion-label>
-          <ion-toggle [(ngModel)]="darkMode" (ionChange)="toggleDarkMode()" slot="end"></ion-toggle>
-        </ion-item>
-        <ion-item button (click)="logout()">
-          <ion-label color="danger">Logout</ion-label>
-        </ion-item>
-      </ion-list>
-    </ion-card-content>
-  </ion-card>
+  <ng-container *ngIf="!isLoading">
+    <!-- Profile Section -->
+    <div class="profile-section ion-text-center ion-padding">
+      <div class="profile-picture" (click)="changeProfilePicture()">
+        <img [src]="getProfilePictureUrl()" alt="Profile">
+        <ion-icon name="camera" class="camera-icon"></ion-icon>
+      </div>
+      <h2>{{ userProfile?.fullName || 'User' }}</h2>
+      <p class="email">{{ userProfile?.email }}</p>
+      <ion-button fill="clear" size="small" (click)="editProfile()">
+        <ion-icon name="pencil-outline" slot="start"></ion-icon>
+        Edit Profile
+      </ion-button>
+    </div>
+
+    <!-- Account Settings -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Account</ion-card-title>
+      </ion-card-header>
+      <ion-card-content class="ion-no-padding">
+        <ion-list lines="none">
+          <ion-item button (click)="changePassword()">
+            <ion-icon name="key-outline" slot="start"></ion-icon>
+            <ion-label>Change Password</ion-label>
+            <ion-icon name="chevron-forward" slot="end"></ion-icon>
+          </ion-item>
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Notification Settings -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Notifications</ion-card-title>
+      </ion-card-header>
+      <ion-card-content class="ion-no-padding">
+        <ion-list lines="none">
+          <ion-item>
+            <ion-icon name="mail-outline" slot="start"></ion-icon>
+            <ion-label>Email Notifications</ion-label>
+            <ion-toggle [(ngModel)]="notificationEmail" (ionChange)="toggleNotificationEmail()" slot="end"></ion-toggle>
+          </ion-item>
+          <ion-item>
+            <ion-icon name="notifications-outline" slot="start"></ion-icon>
+            <ion-label>Push Notifications</ion-label>
+            <ion-toggle [(ngModel)]="notificationPush" (ionChange)="toggleNotificationPush()" slot="end"></ion-toggle>
+          </ion-item>
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Appearance Settings -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Appearance</ion-card-title>
+      </ion-card-header>
+      <ion-card-content class="ion-no-padding">
+        <ion-list lines="none">
+          <ion-item>
+            <ion-icon name="moon-outline" slot="start"></ion-icon>
+            <ion-label>Dark Mode</ion-label>
+            <ion-toggle [(ngModel)]="darkMode" (ionChange)="toggleDarkMode()" slot="end"></ion-toggle>
+          </ion-item>
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- About & Support -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>About</ion-card-title>
+      </ion-card-header>
+      <ion-card-content class="ion-no-padding">
+        <ion-list lines="none">
+          <ion-item>
+            <ion-icon name="information-circle-outline" slot="start"></ion-icon>
+            <ion-label>
+              <h2>Version</h2>
+              <p>1.0.0</p>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Logout -->
+    <ion-card class="logout-card">
+      <ion-card-content class="ion-no-padding">
+        <ion-list lines="none">
+          <ion-item button (click)="logout()" detail="false">
+            <ion-icon name="log-out-outline" slot="start" color="danger"></ion-icon>
+            <ion-label color="danger">Logout</ion-label>
+          </ion-item>
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+  </ng-container>
 </ion-content>

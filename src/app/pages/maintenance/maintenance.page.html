@@ -10,6 +10,11 @@
 </ion-header>
 
 <ion-content [fullscreen]="true">
+  <ion-refresher slot="fixed" pullMax="100" pullMin="60 " (ionRefresh)="doRefresh($event)">
+    <ion-refresher-content pullingIcon="refresh" refreshingSpinner="dots">
+    </ion-refresher-content>
+  </ion-refresher>
+
   <div class="search-filter-section">
     <ion-searchbar placeholder="Search maintenance tasks..." [(ngModel)]="searchTerm" (ionInput)="filterTasks()"
       animated="true">
@@ -59,11 +64,11 @@
   </div>
 
   <div class="tasks-container">
-    <ion-card *ngFor="let task of filteredTasks" class="task-card" [class.overdue]="isOverdue(task)">
+    <ion-card *ngFor="let task of filteredTasks; trackBy: trackByTaskId" class="task-card" [class.overdue]="isOverdue(task)">
       <ion-card-header>
         <div class="task-header">
           <div class="task-title-section">
-            <ion-icon [name]="getCategoryIcon(task.category)" class="category-icon"></ion-icon>
+            <ion-icon name="build-outline" class="category-icon"></ion-icon>
             <ion-card-title>{{ task.title }}</ion-card-title>
           </div>
           <div class="task-badges">
@@ -83,33 +88,27 @@
         <div class="task-details">
           <div class="detail-item">
             <ion-icon name="home-outline"></ion-icon>
-            <span>{{ task.assetName }}</span>
+            <span>{{ task.propertyName }}</span>
           </div>
 
           <div class="detail-item">
             <ion-icon name="calendar-outline"></ion-icon>
-            <span>Scheduled: {{ formatDate(task.scheduledDate) }}</span>
+            <span>Created: {{ task.createdAt | date:'shortDate' }}</span>
           </div>
 
-          <div class="detail-item" *ngIf="task.assignedTo">
+          <div class="detail-item" *ngIf="task.assignedTechnician">
             <ion-icon name="person-outline"></ion-icon>
-            <span>{{ task.assignedTo }}</span>
+            <span>{{ task.assignedTechnician }}</span>
           </div>
 
-          <div class="detail-item" *ngIf="task.estimatedCost">
+          <div class="detail-item" *ngIf="task.maintenanceCost">
             <ion-icon name="cash-outline"></ion-icon>
-            <span>Est. TZS{{ task.estimatedCost }}</span>
+            <span>Cost: TZS{{ task.maintenanceCost }}</span>
           </div>
 
-          <div class="detail-item" *ngIf="task.actualCost">
-            <ion-icon name="receipt-outline"></ion-icon>
-            <span>Actual TZS{{ task.actualCost }}</span>
-          </div>
 
-          <div class="detail-item" *ngIf="task.recurring">
-            <ion-icon name="repeat-outline"></ion-icon>
-            <span>Recurring: {{ task.recurring.frequency }} (every {{ task.recurring.interval }})</span>
-          </div>
+
+
         </div>
 
         <div class="task-actions">
@@ -118,19 +117,27 @@
             Update Status
           </ion-button>
 
-          <ion-button size="small" fill="clear" color="success" (click)="quickUpdateStatus(task, 'completed')"
-            *ngIf="task.status !== 'completed'">
+          <ion-button size="small" fill="clear" color="success" (click)="quickUpdateStatus(task, 'RESOLVED')"
+            *ngIf="task.status !== 'RESOLVED'">
             <ion-icon name="checkmark-done-outline" slot="icon-only"></ion-icon>
           </ion-button>
 
-          <ion-button size="small" fill="clear" color="warning" (click)="quickUpdateStatus(task, 'in-progress')"
-            *ngIf="task.status === 'pending'">
+          <ion-button size="small" fill="clear" color="warning" (click)="quickUpdateStatus(task, 'IN_PROGRESS')"
+            *ngIf="task.status === 'PENDING'">
             <ion-icon name="play-outline" slot="icon-only"></ion-icon>
           </ion-button>
 
           <ion-button size="small" fill="outline" (click)="editTask(task)">
             <ion-icon name="create-outline" slot="start"></ion-icon>
             Edit
+          </ion-button>
+
+          <ion-button size="small" fill="clear" color="tertiary" (click)="viewPhotos(task)">
+            <ion-icon name="images-outline" slot="icon-only"></ion-icon>
+          </ion-button>
+
+          <ion-button size="small" fill="clear" color="primary" (click)="uploadPhoto(task)">
+            <ion-icon name="camera-outline" slot="icon-only"></ion-icon>
           </ion-button>
 
           <ion-button size="small" fill="clear" color="danger" (click)="deleteTask(task)">
