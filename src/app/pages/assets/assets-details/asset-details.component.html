@@ -1,0 +1,245 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Property Details</ion-title>
+    <ion-buttons slot="end">
+      <ion-button fill="clear" (click)="close()">✕</ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="details-container">
+    <!-- Property Header -->
+    <ion-card>
+      <ion-card-header>
+        <div class="card-header">
+          <div class="title">
+            <ion-icon [name]="getPropertyIcon(getDisplayPropertyType())"></ion-icon>
+            <span>{{ getDisplayPropertyType() }}</span>
+          </div>
+          <ion-badge [color]="getAssetStatusColor()">{{ getAssetStatusText() }}</ion-badge>
+        </div>
+        <h2>{{ asset.title || `Property #${asset.id}` }}</h2>
+      </ion-card-header>
+    </ion-card>
+
+    <!-- Basic Information -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="information-circle-outline"></ion-icon>
+          Basic Information
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="12" size-md="6">
+              <p><strong>Property ID:</strong> {{ asset.id }}</p>
+              <p><strong>Address:</strong> {{ asset.address || 'Not specified' }}</p>
+              <p><strong>Structure Type:</strong> {{ asset.structureType }}</p>
+            </ion-col>
+            <ion-col size="12" size-md="6">
+              <p><strong>Usage:</strong> {{ getPropertyUsage() }}</p>
+              <p><strong>Region:</strong> {{ getRegion() }}</p>
+              <p><strong>Postal Code:</strong> {{ getPostcode() }}</p>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Owner Information -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="person-outline"></ion-icon>
+          Owner Information
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="12" size-md="6">
+              <p><strong>Owner Name:</strong> {{ getOwnerName() }}</p>
+            </ion-col>
+            <ion-col size="12" size-md="6">
+              <p><strong>Owner Phone:</strong> {{ getOwnerPhone() }}</p>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Location Information -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="location-outline"></ion-icon>
+          Location Information
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="12" size-md="6">
+              <p><strong>Latitude:</strong> {{ asset.latitude || 'Not specified' }}</p>
+            </ion-col>
+            <ion-col size="12" size-md="6">
+              <p><strong>Longitude:</strong> {{ asset.longitude || 'Not specified' }}</p>
+            </ion-col>
+          </ion-row>
+          <ion-row>
+            <ion-col size="12">
+              <p><strong>Coordinates:</strong> {{ formatCoordinates(asset.latitude, asset.longitude) }}</p>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Utility Information -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="flash-outline"></ion-icon>
+          Utility Information
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="12" size-md="6">
+              <p><strong>Water Meter:</strong> {{ getWaterMeterNumber() }}</p>
+            </ion-col>
+            <ion-col size="12" size-md="6">
+              <p><strong>Electricity Meter:</strong> {{ getElectricityMeterNumber() }}</p>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Units (for Multi-Unit Properties) -->
+    <ion-card *ngIf="getUnits().length > 0">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="business-outline"></ion-icon>
+          Property Units & Tenants
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-list>
+          <ion-item *ngFor="let unit of getUnits()" lines="full">
+            <ion-label>
+              <h3>{{ unit }}</h3>
+              <div *ngIf="getTenantsByUnit(unit).length > 0" class="tenant-info">
+                <p *ngFor="let tenant of getTenantsByUnit(unit)" class="tenant-detail">
+                  <ion-badge [color]="getTenantStatusColor(tenant.status)" class="tenant-badge">
+                    {{ tenant.status }}
+                  </ion-badge>
+                  <strong>{{ tenant.fullName }}</strong><br>
+                  <ion-icon name="mail-outline"></ion-icon> {{ tenant.email }}<br>
+                  <ion-icon name="call-outline"></ion-icon> {{ tenant.phone }}<br>
+                  <ion-icon name="cash-outline"></ion-icon> TZS {{ tenant.monthlyRent.toLocaleString() || '0' }}/month<br>
+                  <ion-icon name="calendar-outline"></ion-icon> 
+                  {{ formatLeaseDate(tenant.leaseStart) }} - {{ formatLeaseDate(tenant.leaseEnd) }}
+                </p>
+              </div>
+              <div *ngIf="getTenantsByUnit(unit).length === 0" class="no-tenant">
+                <p class="no-tenant-text">
+                  <ion-icon name="person-off-outline"></ion-icon>
+                  No tenant assigned
+                </p>
+              </div>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Tenant Information (for Standalone Properties) -->
+    <ion-card *ngIf="getUnits().length === 0 && tenants.length > 0">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="people-outline"></ion-icon>
+          Tenant Information
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-list>
+          <ion-item *ngFor="let tenant of tenants" lines="full">
+            <ion-label>
+              <h3>
+                <ion-badge [color]="getTenantStatusColor(tenant.status)" class="tenant-badge">
+                  {{ tenant.status }}
+                </ion-badge>
+                {{ tenant.fullName }}
+              </h3>
+              <p class="tenant-detail">
+                <ion-icon name="mail-outline"></ion-icon> {{ tenant.email }}<br>
+                <ion-icon name="call-outline"></ion-icon> {{ tenant.phone }}<br>
+                <ion-icon name="cash-outline"></ion-icon> TZS {{ tenant.monthlyRent.toLocaleString() || '0' }}/month<br>
+                <ion-icon name="calendar-outline"></ion-icon> 
+                {{ formatLeaseDate(tenant.leaseStart) }} - {{ formatLeaseDate(tenant.leaseEnd) }}
+              </p>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- No Tenants Assigned -->
+    <ion-card *ngIf="tenants.length === 0">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="people-outline"></ion-icon>
+          Tenant Information
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="no-tenant">
+          <p class="no-tenant-text">
+            <ion-icon name="person-off-outline"></ion-icon>
+            No tenants assigned to this property
+          </p>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Additional Notes -->
+    <ion-card *ngIf="asset.notes">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="document-text-outline"></ion-icon>
+          Additional Notes
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <p>{{ asset.notes }}</p>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Metadata Information -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="code-outline"></ion-icon>
+          Technical Information
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="12" size-md="6">
+              <p><strong>Created:</strong> {{ getCreatedDate() }}</p>
+            </ion-col>
+            <ion-col size="12" size-md="6">
+              <p><strong>Last Updated:</strong> Not specified</p>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>

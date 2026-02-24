@@ -1,0 +1,68 @@
+.register-container {
+  max-width: 400px;
+  margin: 20px auto;
+  padding: 20px;
+  background: var(--ion-color-light);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  h2 {
+    text-align: center;
+    color: var(--ion-color-primary);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: var(--ion-color-medium);
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+
+  ion-item {
+    margin-bottom: 16px;
+    border-radius: 8px;
+    --background: var(--ion-background-color);
+    // --color: var(--ion-color-dark);
+  }
+
+  .register-btn {
+    margin-top: 24px;
+    margin-bottom: 16px;
+    --border-radius: 8px;
+    height: 48px;
+    font-weight: 600;
+  }
+
+  .login-link {
+    text-align: center;
+    margin-top: 20px;
+
+    p {
+      color: var(--ion-color-medium);
+      font-size: 14px;
+      margin: 0;
+    }
+
+    ion-button {
+      --padding-start: 0;
+      --padding-end: 0;
+      font-size: 14px;
+    }
+  }
+}
+
+ion-input {
+  --background: var(--ion-background-color);
+  --color: var(--ion-text-color);
+  --placeholder-color: var(--ion-color-medium);
+  --placeholder-opacity: 0.7;
+}
+
+ion-textarea {
+  --background: var(--ion-background-color);
+  --color: var(--ion-text-color);
+  --placeholder-color: var(--ion-color-medium);
+  --placeholder-opacity: 0.7;
+}

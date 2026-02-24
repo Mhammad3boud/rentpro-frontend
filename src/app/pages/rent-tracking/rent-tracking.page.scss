@@ -6,27 +6,8 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    padding: 1.5rem;
+    padding: 1rem;
     flex-wrap: wrap;
-
-    h1 {
-      font-size: 1.6rem;
-      font-weight: 600;
-      margin: 0;
-    }
-
-    p {
-      color: var(--ion-color-medium);
-      margin: 0.3rem 0 0;
-    }
-
-    .record-btn {
-      --background: var(--ion-color-success);
-      --color: var(--ion-color-success-contrast, #fff);
-      font-weight: 600;
-      border-radius: 8px;
-      text-transform: uppercase;
-    }
   }
 
   /* SUMMARY CARDS */
@@ -40,7 +21,7 @@
       background: var(--ion-item-background);
       border-radius: 12px;
       padding: 1rem 1.2rem;
-      box-shadow: 0 1px 4px var(--ion-shadow-color, rgba(0,0,0,0.06));
+      box-shadow: 0 1px 4px var(--ion-shadow-color, rgba(0, 0, 0, 0.06));
 
       h3 {
         margin: 0;
@@ -62,10 +43,18 @@
       }
     }
 
-    #total h2 { color: #198754; }
-    #pending h2 { color: #d39e00; }
-    #overdue h2 { color: #dc3545; }
-    #active h2 { color: #0d6efd; }
+    #total h2 {
+      color: var(--ion-color-success);
+    }
+    #pending h2 {
+      color: var(--ion-color-warning);
+    }
+    #overdue h2 {
+      color: var(--ion-color-danger);
+    }
+    #active h2 {
+      color: var(--ion-color-primary);
+    }
   }
 
   /* FILTERS */
@@ -83,7 +72,7 @@
       background: var(--ion-item-background);
       border-radius: 8px;
       padding: 0.8rem 1rem;
-      box-shadow: 0 1px 3px var(--ion-shadow-color, rgba(0,0,0,0.08));
+      box-shadow: 0 1px 3px var(--ion-shadow-color, rgba(0, 0, 0, 0.08));
 
       ion-icon {
         color: var(--ion-color-medium);
@@ -96,7 +85,9 @@
         flex: 1;
         background: transparent;
         color: var(--ion-text-color);
-        &::placeholder { color: var(--ion-color-medium); }
+        &::placeholder {
+          color: var(--ion-color-medium);
+        }
       }
     }
 
@@ -112,7 +103,7 @@
         background: var(--ion-item-background);
         border-radius: 8px;
         padding: 0 0.8rem;
-        box-shadow: 0 1px 3px var(--ion-shadow-color, rgba(0,0,0,0.08));
+        box-shadow: 0 1px 3px var(--ion-shadow-color, rgba(0, 0, 0, 0.08));
 
         ion-icon {
           color: var(--ion-color-medium);
@@ -133,7 +124,7 @@
     border-radius: 12px;
     margin: 0 1.5rem 2rem;
     padding: 1.2rem 1.5rem;
-    box-shadow: 0 1px 4px var(--ion-shadow-color, rgba(0,0,0,0.06));
+    box-shadow: 0 1px 4px var(--ion-shadow-color, rgba(0, 0, 0, 0.06));
 
     h3 {
       font-size: 1.1rem;
@@ -156,7 +147,8 @@
       width: 100%;
       border-collapse: collapse;
 
-      th, td {
+      th,
+      td {
         text-align: left;
         padding: 0.6rem 0.8rem;
         border-bottom: 1px solid var(--ion-border-color, #eee);

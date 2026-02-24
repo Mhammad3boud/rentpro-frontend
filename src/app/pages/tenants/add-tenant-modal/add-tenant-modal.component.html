@@ -1,6 +1,6 @@
 <ion-header translucent>
   <ion-toolbar>
-    <ion-title>Add New Tenant</ion-title>
+    <ion-title>{{ isEditMode ? 'Edit Tenant' : 'Add New Tenant' }}</ion-title>
     <ion-buttons slot="end">
       <ion-button (click)="cancel()">✕</ion-button>
     </ion-buttons>
@@ -10,108 +10,198 @@
 <ion-content class="ion-padding">
   <p>Enter the tenant details and lease information</p>
 
-  <ion-grid>
-    <ion-row>
-      <ion-col size="6">
-        <ion-item>
-          <ion-label position="stacked">Full Name</ion-label>
-          <ion-input [(ngModel)]="tenant.fullName" placeholder="Enter full name"></ion-input>
-        </ion-item>
-      </ion-col>
+  <!-- Property and Unit Assignment Section -->
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Property & Unit Assignment</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <!-- Show current assignment in edit mode -->
+      <div *ngIf="isEditMode && currentAssignment" class="current-assignment ion-margin-bottom">
+        <ion-chip color="primary">
+          <ion-icon name="home-outline"></ion-icon>
+          <ion-label>Current Assignment</ion-label>
+        </ion-chip>
+        <div class="ion-margin-top">
+          <p><strong>Property:</strong> {{ currentAssignment.propertyName }}</p>
+          <p><strong>Unit:</strong> {{ currentAssignment.unitName }}</p>
+          <p *ngIf="currentAssignment.propertyAddress"><strong>Address:</strong> {{ currentAssignment.propertyAddress }}</p>
+        </div>
+        <ion-note color="medium" class="ion-margin-top">
+          Use the dropdown below to reassign to a different unit if needed
+        </ion-note>
+      </div>
 
-      <ion-col size="6">
-        <ion-item>
-          <ion-label position="stacked">Email</ion-label>
-          <ion-input [(ngModel)]="tenant.email" placeholder="Enter email address"></ion-input>
-        </ion-item>
-      </ion-col>
-    </ion-row>
-
-    <ion-row>
-      <ion-col size="6">
-        <ion-item>
-          <ion-label position="stacked">Phone Number</ion-label>
-          <ion-input [(ngModel)]="tenant.phoneNumber" placeholder="Enter phone number"></ion-input>
-        </ion-item>
-      </ion-col>
-
-      <ion-col size="6">
-        <ion-item>
-          <ion-label position="stacked">Property Number</ion-label>
-          <ion-input [(ngModel)]="tenant.propertyNumber" placeholder="Enter property number"></ion-input>
-        </ion-item>
-      </ion-col>
-    </ion-row>
-
-    <ion-row>
-      <ion-col size="6">
-        <ion-item>
-          <ion-label position="stacked">Unit Number</ion-label>
-          <ion-input [(ngModel)]="tenant.unitNumber" placeholder="Enter unit number"></ion-input>
-        </ion-item>
-      </ion-col>
-
-      <ion-col size="6">
-        <ion-item>
-          <ion-label position="stacked">Monthly Rent ($)</ion-label>
-          <ion-input type="number" [(ngModel)]="tenant.monthlyRent" placeholder="Enter monthly rent"></ion-input>
-        </ion-item>
-      </ion-col>
-    </ion-row>
-
-    <ion-row>
-      <ion-col size="6">
-        <ion-item>
-          <ion-label position="stacked">Lease Start Date
-            <ion-icon name="calendar"></ion-icon>
+      <ion-item>
+        <ion-label position="stacked">{{ isEditMode ? 'Reassign to different unit (optional)' : 'Select Property and Unit' }}</ion-label>
+        <ion-select [(ngModel)]="selectedUnit" (ngModelChange)="onUnitSelected($event)" placeholder="Choose available unit">
+          <ion-select-option *ngFor="let unit of availableUnits" [value]="unit" [disabled]="!unit.isAvailable">
+            {{ unit.propertyName }} - {{ unit.unitName }} ({{ getUnitStatusLabel(unit) }})
+          </ion-select-option>
+        </ion-select>
+      </ion-item>
+      
+      <!-- Show all units with status -->
+      <ion-list *ngIf="availableUnits.length > 0" class="ion-margin-top">
+        <ion-list-header>
+          <ion-label>Property Status Overview</ion-label>
+        </ion-list-header>
+        <ion-item *ngFor="let unit of availableUnits" [disabled]="!unit.isAvailable" button (click)="unit.isAvailable && onUnitSelected(unit)">
+          <ion-icon name="home-outline" slot="start"></ion-icon>
+          <ion-label>
+            <h3>{{ unit.propertyName }} - {{ unit.unitName }}</h3>
+            <p>{{ unit.propertyAddress }}</p>
+            <p *ngIf="unit.currentTenantName && !unit.isAvailable">Tenant: {{ unit.currentTenantName }}</p>
+            <p *ngIf="unit.leaseEndDate">Lease ends: {{ unit.leaseEndDate | date:'mediumDate' }}</p>
           </ion-label>
-          <ion-input type="date" [(ngModel)]="tenant.leaseStart"></ion-input>
-          <!-- <ion-datetime presentation="date" [(ngModel)]="tenant.leaseStart"></ion-datetime> -->
+          <ion-chip slot="end" [color]="getUnitStatusColor(unit)">
+            <ion-icon [name]="unit.isAvailable ? (unit.leaseStatus === 'EXPIRED' ? 'time-outline' : 'checkmark-circle') : 'close-circle'"></ion-icon>
+            {{ getUnitStatusLabel(unit) }}
+          </ion-chip>
+          <ion-radio slot="end" [checked]="selectedUnit === unit" [disabled]="!unit.isAvailable"></ion-radio>
         </ion-item>
-      </ion-col>
+      </ion-list>
+      
+      <div *ngIf="selectedUnit" class="selected-unit-info ion-margin-top">
+        <ion-chip color="success">
+          <ion-icon name="checkmark-circle"></ion-icon>
+          <ion-label>{{ selectedUnit.propertyName }} - {{ selectedUnit.unitName }}</ion-label>
+        </ion-chip>
+        <p class="ion-text-wrap ion-margin-top">
+          <strong>Lease:</strong> {{ selectedUnit.leaseName }}<br>
+          <strong>Address:</strong> {{ selectedUnit.propertyAddress }}
+        </p>
+      </div>
+    </ion-card-content>
+  </ion-card>
 
-      <ion-col size="6">
-        <ion-item>
-          <ion-label position="stacked">Lease End Date
-            <ion-icon name="calendar"></ion-icon>
-          </ion-label>
-          <ion-input type="date" [(ngModel)]="tenant.leaseEnd"></ion-input>
-          <!-- <ion-datetime presentation="date" [(ngModel)]="tenant.leaseEnd"></ion-datetime> -->
-        </ion-item>   
-      </ion-col>
-    </ion-row>
+  <!-- Tenant Information Section -->
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Tenant Information</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <ion-grid>
+        <ion-row>
+          <ion-col size="12">
+            <ion-item>
+              <ion-label position="stacked">Full Name *</ion-label>
+              <ion-input [(ngModel)]="tenant.fullName" placeholder="Enter full name"></ion-input>
+            </ion-item>
+          </ion-col>
+        </ion-row>
 
-    <ion-row>
-      <ion-col size="6">
-        <ion-item>
-          <ion-label position="stacked">Renewal Reminder Date
-            <ion-icon name="calendar"></ion-icon>
-          </ion-label>
-          <ion-input type="date" [(ngModel)]="tenant.renewalReminder"></ion-input>
-          <!-- <ion-datetime presentation="date" [(ngModel)]="tenant.renewalReminder"></ion-datetime> -->
-        </ion-item>
-      </ion-col>
+        <ion-row>
+          <ion-col size="6">
+            <ion-item>
+              <ion-label position="stacked">Email *</ion-label>
+              <ion-input type="email" [(ngModel)]="tenant.email" placeholder="Enter email address"></ion-input>
+            </ion-item>
+          </ion-col>
 
-      <ion-col size="6">
-        <ion-item>
-          <ion-label position="stacked">Emergency Contact</ion-label>
-          <ion-input [(ngModel)]="tenant.emergencyContact" placeholder="Name and phone number"></ion-input>
-        </ion-item>
-      </ion-col>
-    </ion-row>
+          <ion-col size="6">
+            <ion-item>
+              <ion-label position="stacked">Phone Number *</ion-label>
+              <ion-input [(ngModel)]="tenant.phoneNumber" placeholder="Enter phone number"></ion-input>
+            </ion-item>
+          </ion-col>
+        </ion-row>
 
-    <ion-row>
-      <ion-col>
-        <ion-item>
-          <ion-label position="stacked">Address</ion-label>
-          <ion-textarea [(ngModel)]="tenant.address" placeholder="Enter full address"></ion-textarea>
-        </ion-item>
-      </ion-col>
-    </ion-row>
-  </ion-grid>
+        <ion-row *ngIf="isEditMode">
+          <ion-col size="12">
+            <ion-item>
+              <ion-label position="stacked">Tenant Status</ion-label>
+              <ion-select [(ngModel)]="tenant.status" placeholder="Select status">
+                // RODO: link this to the tenant status enum in the backend for consistency
+                <ion-select-option value="ACTIVE">Active</ion-select-option>
+                <ion-select-option value="INACTIVE">Inactive</ion-select-option>
+              </ion-select>
+            </ion-item>
+          </ion-col>
+        </ion-row>
 
+        <ion-row>
+          <ion-col size="6">
+            <ion-item>
+              <ion-label position="stacked">Emergency Contact Name</ion-label>
+              <ion-input [(ngModel)]="tenant.emergencyName" placeholder="Emergency contact name"></ion-input>
+            </ion-item>
+          </ion-col>
+
+          <ion-col size="6">
+            <ion-item>
+              <ion-label position="stacked">Emergency Contact Phone</ion-label>
+              <ion-input [(ngModel)]="tenant.emergencyPhone" placeholder="Emergency contact phone"></ion-input>
+            </ion-item>
+          </ion-col>
+        </ion-row>
+
+        <ion-row>
+          <ion-col size="12">
+            <ion-item>
+              <ion-label position="stacked">Address (Optional)</ion-label>
+              <ion-textarea [(ngModel)]="tenant.address" placeholder="Enter full address if different from property"></ion-textarea>
+            </ion-item>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Lease Information Section -->
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Lease Information</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <ion-grid>
+        <ion-row>
+          <ion-col size="6">
+            <ion-item>
+              <ion-label position="stacked">Monthly Rent ($) *</ion-label>
+              <ion-input type="number" [(ngModel)]="tenant.monthlyRent" placeholder="Enter monthly rent"></ion-input>
+            </ion-item>
+          </ion-col>
+
+          <ion-col size="6">
+            <ion-item>
+              <ion-label position="stacked">Lease Start Date *</ion-label>
+              <ion-input type="date" [(ngModel)]="tenant.leaseStart"></ion-input>
+            </ion-item>
+          </ion-col>
+        </ion-row>
+
+        <ion-row>
+          <ion-col size="6">
+            <ion-item>
+              <ion-label position="stacked">Lease End Date *</ion-label>
+              <ion-input type="date" [(ngModel)]="tenant.leaseEnd"></ion-input>
+            </ion-item>
+          </ion-col>
+
+          <ion-col size="6">
+            <ion-item>
+              <ion-label position="stacked">Renewal Reminder Date</ion-label>
+              <ion-input type="date" [(ngModel)]="tenant.renewalReminder"></ion-input>
+            </ion-item>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Loading Spinner -->
+  <div *ngIf="isLoading" class="ion-text-center ion-padding">
+    <ion-spinner></ion-spinner>
+    <p>Processing...</p>
+  </div>
+
+  <!-- Action Buttons -->
   <ion-row class="ion-justify-content-end ion-padding-top">
     <ion-button fill="clear" (click)="cancel()">Cancel</ion-button>
-    <ion-button color="success" (click)="addTenant()">Add Tenant</ion-button>
+    <ion-button color="success" (click)="saveTenant()" [disabled]="isLoading">
+      <ion-icon name="person-add" slot="start"></ion-icon>
+      {{ isEditMode ? 'Update Tenant' : 'Add Tenant' }}
+    </ion-button>
   </ion-row>
 </ion-content>

@@ -6,6 +6,9 @@ import { IonicModule } from '@ionic/angular';
 import { AssetsPageRoutingModule } from './assets-routing.module';
 import { AssetsPage } from './assets.page';
 import { AddAssetComponent } from './add-asset/add-asset.component';
+import { AssetDetailsComponent } from './assets-details/asset-details.component';
+
+
 
 @NgModule({
   imports: [
@@ -16,7 +19,8 @@ import { AddAssetComponent } from './add-asset/add-asset.component';
   ],
   declarations: [
     AssetsPage,
-    AddAssetComponent
+    AddAssetComponent,
+    AssetDetailsComponent
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })

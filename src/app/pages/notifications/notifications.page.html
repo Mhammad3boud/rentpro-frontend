@@ -8,35 +8,44 @@
     <ion-title>Notifications</ion-title>
 
     <ion-buttons slot="end" *ngIf="notifications.length > 0">
-      <ion-button (click)="clearAll()">
-        <ion-icon name="trash-outline"></ion-icon>
+      <ion-button (click)="markAllAsRead()">
+        <ion-icon name="checkmark-done-outline"></ion-icon>
       </ion-button>
     </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content>
-  <ng-container *ngIf="notifications.length > 0; else noNotifications">
+  <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div *ngIf="isLoading" class="loading-state">
+    <ion-spinner></ion-spinner>
+    <p>Loading notifications...</p>
+  </div>
+
+  <ng-container *ngIf="!isLoading && notifications.length > 0">
     <div class="notif-stack">
-      <ion-card *ngFor="let notif of notifications" [class.read]="notif.read" (click)="toggleRead(notif)" role="button" tabindex="0">
+      <ion-card *ngFor="let notif of notifications" [class.read]="notif.isRead" (click)="toggleRead(notif)" role="button" tabindex="0">
         <ion-card-header>
           <ion-card-title>
             {{ notif.title }}
-            <ion-badge color="primary" *ngIf="!notif.read" class="unread-badge">Unread</ion-badge>
+            <ion-badge color="primary" *ngIf="!notif.isRead" class="unread-badge">Unread</ion-badge>
           </ion-card-title>
         </ion-card-header>
         <ion-card-content>
           <p>{{ notif.message }}</p>
-          <small>{{ notif.time }}</small>
+          <small>{{ getTimeAgo(notif.createdAt) }}</small>
         </ion-card-content>
       </ion-card>
     </div>
   </ng-container>
 
-  <ng-template #noNotifications>
+  <ng-container *ngIf="!isLoading && notifications.length === 0">
     <div class="empty-state">
       <ion-icon name="notifications-off-outline"></ion-icon>
       <p>No notifications yet</p>
     </div>
-  </ng-template>
+  </ng-container>
 </ion-content>

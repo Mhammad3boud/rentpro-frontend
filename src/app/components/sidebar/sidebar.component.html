@@ -1,0 +1,66 @@
+<!-- Mobile Menu Button -->
+<ion-button 
+  *ngIf="!isDesktop" 
+  class="mobile-menu-button" 
+  fill="clear" 
+  (click)="toggleSidebar()"
+  color="dark">
+  <ion-icon name="menu-outline"></ion-icon>
+</ion-button>
+
+<!-- Sidebar Overlay for Mobile -->
+<div 
+  *ngIf="!isDesktop && isSidebarOpen" 
+  class="sidebar-overlay" 
+  (click)="toggleSidebar()">
+</div>
+
+<!-- Sidebar -->
+<aside class="sidebar" 
+       [class.desktop]="isDesktop" 
+       [class.mobile]="!isDesktop"
+       [class.open]="isSidebarOpen">
+
+  <!-- Sidebar Header -->
+  <div class="sidebar-header">
+    <div class="logo">
+      <ion-icon name="business-outline"></ion-icon>
+      <span *ngIf="isDesktop" class="logo-text">RentPro</span>
+    </div>
+    
+    <ion-button 
+      *ngIf="!isDesktop" 
+      class="close-button" 
+      fill="clear" 
+      (click)="toggleSidebar()"
+      color="dark">
+      <ion-icon name="close-outline"></ion-icon>
+    </ion-button>
+  </div>
+
+  <!-- Navigation Items -->
+  <nav class="sidebar-nav">
+    <div class="nav-item" 
+         *ngFor="let item of items" 
+         [class.active]="isActive(item.path)"
+         (click)="selectItem(item.path)">
+      <ion-icon [name]="item.icon"></ion-icon>
+      <span class="nav-label">{{ item.label }}</span>
+      
+      <ion-badge 
+        *ngIf="item.badge && item.badge > 0" 
+        color="danger" 
+        class="nav-badge">
+        {{ item.badge }}
+      </ion-badge>
+    </div>
+  </nav>
+
+  <!-- Sidebar Footer -->
+  <div class="sidebar-footer" *ngIf="isDesktop">
+    <div class="footer-item">
+      <ion-icon name="settings-outline"></ion-icon>
+      <span class="nav-label">Settings</span>
+    </div>
+  </div>
+</aside>

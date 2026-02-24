@@ -1,46 +1,43 @@
 <ion-header>
   <ion-toolbar>
     <ion-title>Rent Tracking</ion-title>
+    <ion-buttons slot="end">
+      <ion-button color="success" (click)="openRecordPaymentModal()">
+        <ion-icon slot="icon-only" name="add-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content class="rent-page">
 
-  <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
-    <ion-refresher-content color="primary" refreshing-spinner="crescent" pullingIcon="refresh"></ion-refresher-content>
+  <ion-refresher slot="fixed" pullMax="100" pullMin="60 " (ionRefresh)="doRefresh($event)">
+    <ion-refresher-content refreshing-spinner="dots" pullingIcon="refresh"></ion-refresher-content>
   </ion-refresher>
 
   <div class="header-section">
-    <!-- <div>
-      <h1>Rent Tracking</h1>
-      <p>Monitor rent payments and collection</p>
-    </div> -->
 
-    <ion-button color="success" shape="round" class="record-btn" (click)="openRecordPaymentModal()">
-      <ion-icon slot="start" name="add-outline"></ion-icon>
-      Record Payment
-    </ion-button>
   </div>
 
   <div class="summary-cards">
     <div class="card" id="total">
       <h3>Total Revenue</h3>
-      <h2>TZS 270,000</h2>
+      <h2>TZS {{ totalRevenue | number:'1.0-0' }}</h2>
       <p>Collected this period</p>
     </div>
     <div class="card" id="pending">
       <h3>Pending Amount</h3>
-      <h2>TZS 120,000</h2>
+      <h2>TZS {{ pendingAmount | number:'1.0-0' }}</h2>
       <p>Awaiting payment</p>
     </div>
     <div class="card" id="overdue">
       <h3>Overdue Amount</h3>
-      <h2>TZS 2,000,000</h2>
+      <h2>TZS {{ overdueAmount | number:'1.0-0' }}</h2>
       <p>Requires attention</p>
     </div>
     <div class="card" id="active">
-      <h3>Active Properties</h3>
-      <h2>5</h2>
+      <h3>Active Leases</h3>
+      <h2>{{ activeLeases }}</h2>
       <p>Generating revenue</p>
     </div>
   </div>
@@ -62,6 +59,7 @@
         <ion-select interface="popover" [(ngModel)]="selectedStatus" (ionChange)="filterRecords()">
           <ion-select-option value="all">All Status</ion-select-option>
           <ion-select-option value="Paid">Paid</ion-select-option>
+          <ion-select-option value="Partial">Partial</ion-select-option>
           <ion-select-option value="Pending">Pending</ion-select-option>
           <ion-select-option value="Overdue">Overdue</ion-select-option>
         </ion-select>
@@ -71,8 +69,7 @@
         <ion-icon name="calendar-outline"></ion-icon>
         <ion-select interface="popover" [(ngModel)]="selectedMonth" (ionChange)="filterRecords()">
           <ion-select-option value="all">All Months</ion-select-option>
-          <ion-select-option value="2024-09">September 2024</ion-select-option>
-          <ion-select-option value="2024-10">October 2024</ion-select-option>
+          <ion-select-option *ngFor="let opt of monthOptions" [value]="opt.value">{{ opt.label }}</ion-select-option>
         </ion-select>
       </div>
     </div>
@@ -103,7 +100,7 @@
             <td>{{ record.property }}</td>
             <td>{{ record.month }}</td>
             <td>{{ record.dueDate }}</td>
-            <td>${{ record.amount }}</td>
+            <td>TZS {{ record.amount | number:'1.0-0' }}</td>
             <td>
               <ion-badge [color]="getStatusColor(record.status)">
                 <ion-icon
@@ -118,6 +115,10 @@
                   *ngIf="record.status === 'Pending'"
                   name="time-outline"
                 ></ion-icon>
+                <ion-icon
+                  *ngIf="record.status === 'Partial'"
+                  name="pie-chart-outline"
+                ></ion-icon>
                 {{ record.status }}
               </ion-badge>
             </td>
@@ -130,7 +131,7 @@
                   Edit
                 </ion-button>
                 <ion-button
-                  *ngIf="record.status === 'Paid'"
+                  *ngIf="record.status === 'Paid' || record.status === 'Partial'"
                   fill="outline"
                   color="warning"
                   size="small"

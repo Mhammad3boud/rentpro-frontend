@@ -1,0 +1,107 @@
+.assigned-tenant-modal {
+  --background: var(--ion-color-light);
+}
+
+.assignment-summary {
+  background: var(--ion-color-light);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+
+  h3 {
+    color: var(--ion-color-primary);
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 4px 0;
+    color: var(--ion-color-dark);
+    
+    strong {
+      color: var(--ion-color-primary);
+    }
+  }
+}
+
+.selected-tenant-info,
+.selected-unit-info {
+  background: var(--ion-color-light);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+
+  ion-chip {
+    margin: 0;
+  }
+}
+
+ion-card {
+  margin: 16px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+ion-list {
+  margin: 0;
+}
+
+ion-item {
+  --padding-start: 16px;
+  --padding-end: 16px;
+  
+  h2 {
+    font-weight: 600;
+    color: var(--ion-color-dark);
+  }
+  
+  p {
+    color: var(--ion-color-medium);
+    font-size: 0.9em;
+  }
+
+  // Style for disabled/occupied units
+  &[disabled] {
+    opacity: 0.6;
+    --background: var(--ion-color-light);
+    
+    h2 {
+      color: var(--ion-color-medium);
+    }
+    
+    p {
+      color: var(--ion-color-step-600);
+    }
+  }
+}
+
+ion-avatar {
+  width: 40px;
+  height: 40px;
+  
+  ion-icon {
+    font-size: 32px;
+    color: var(--ion-color-medium);
+  }
+}
+
+ion-searchbar {
+  margin-bottom: 8px;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  
+  ion-spinner {
+    margin-bottom: 16px;
+  }
+}

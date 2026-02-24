@@ -8,6 +8,7 @@ import { RentTrackingPageRoutingModule } from './rent-tracking-routing.module';
 
 import { RentTrackingPage } from './rent-tracking.page';
 import { RecordPaymentModalComponent } from './record-payment-modal/record-payment-modal.component';
+import { RentSimpleService } from '../../../api/rent-simple.service';
 
 @NgModule({
   imports: [
@@ -17,6 +18,7 @@ import { RecordPaymentModalComponent } from './record-payment-modal/record-payme
     RentTrackingPageRoutingModule,
     RecordPaymentModalComponent
   ],
-  declarations: [RentTrackingPage]
+  declarations: [RentTrackingPage],
+  providers: [RentSimpleService]
 })
 export class RentTrackingPageModule {}

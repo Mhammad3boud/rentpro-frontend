@@ -1,6 +1,6 @@
 <ion-header>
   <ion-toolbar color="light">
-    <ion-title class="modal-title">Generate New Contract</ion-title>
+    <ion-title class="modal-title">{{ isEditMode ? 'Edit Contract' : 'Generate New Contract' }}</ion-title>
     <ion-buttons slot="end">
       <ion-button fill="clear" (click)="dismiss()">
         <ion-icon name="close-outline"></ion-icon>
@@ -15,19 +15,48 @@
     <div class="form-section">
       <h2 class="section-title">Contract Information</h2>
 
+      <!-- Lease Selection Dropdown (only when creating new) -->
+      <ion-item lines="none" *ngIf="!preset && !isEditMode">
+        <ion-label position="stacked">Select Lease</ion-label>
+        <ion-select 
+          [(ngModel)]="selectedLeaseId" 
+          (ionChange)="onLeaseSelected()"
+          placeholder="Select a lease..."
+          interface="popover">
+          <ion-select-option *ngFor="let lease of leases" [value]="lease.leaseId">
+            {{ lease.displayName }}
+          </ion-select-option>
+        </ion-select>
+        <ion-spinner *ngIf="isLoadingLeases" name="crescent" slot="end"></ion-spinner>
+      </ion-item>
+
+      <!-- Template Selection Dropdown -->
+      <ion-item lines="none" *ngIf="!isEditMode">
+        <ion-label position="stacked">Contract Template</ion-label>
+        <ion-select 
+          [(ngModel)]="selectedTemplateId" 
+          placeholder="Select a template..."
+          interface="popover">
+          <ion-select-option *ngFor="let template of templates" [value]="template.templateId">
+            {{ template.templateName }} {{ template.isDefault ? '(Default)' : '' }}
+          </ion-select-option>
+        </ion-select>
+        <ion-spinner *ngIf="isLoadingTemplates" name="crescent" slot="end"></ion-spinner>
+      </ion-item>
+
       <ion-item lines="none">
         <ion-label position="stacked">Tenant Name</ion-label>
-        <ion-input [(ngModel)]="tenantName" placeholder="Enter tenant name"></ion-input>
+        <ion-input [(ngModel)]="tenantName" placeholder="Enter tenant name" [readonly]="!isEditMode && selectedLeaseId"></ion-input>
       </ion-item>
 
       <div class="two-cols">
         <ion-item lines="none">
-          <ion-label position="stacked">Property Number</ion-label>
-          <ion-input [(ngModel)]="propertyNumber"></ion-input>
+          <ion-label position="stacked">Property</ion-label>
+          <ion-input [(ngModel)]="propertyNumber" [readonly]="!isEditMode && selectedLeaseId"></ion-input>
         </ion-item>
         <ion-item lines="none">
           <ion-label position="stacked">Unit Number</ion-label>
-          <ion-input [(ngModel)]="unitNumber"></ion-input>
+          <ion-input [(ngModel)]="unitNumber" [readonly]="!isEditMode && selectedLeaseId"></ion-input>
         </ion-item>
       </div>
 
@@ -53,11 +82,11 @@
 
       <div class="two-cols">
         <ion-item lines="none">
-          <ion-label position="stacked">Monthly Rent ($)</ion-label>
+          <ion-label position="stacked">Monthly Rent (TZS)</ion-label>
           <ion-input type="number" [(ngModel)]="monthlyRent"></ion-input>
         </ion-item>
         <ion-item lines="none">
-          <ion-label position="stacked">Security Deposit ($)</ion-label>
+          <ion-label position="stacked">Security Deposit (TZS)</ion-label>
           <ion-input type="number" [(ngModel)]="securityDeposit"></ion-input>
         </ion-item>
       </div>
@@ -81,8 +110,8 @@
         </ion-textarea>
       </ion-item>
 
-      <ion-button expand="block" color="success" class="generate-btn" (click)="generateContract()">
-        Generate Contract
+      <ion-button expand="block" color="success" class="generate-btn" (click)="generateContract()" [disabled]="!tenantName">
+        {{ isEditMode ? 'Save Changes' : 'Generate Contract' }}
       </ion-button>
     </div>
 

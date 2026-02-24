@@ -1,27 +1,9 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { ModalController, AlertController, ToastController } from '@ionic/angular';
+import { ModalController, AlertController, ToastController, ActionSheetController } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { AddMaintenanceTaskComponent } from './add-maintenance-task/add-maintenance-task.component';
-
-interface MaintenanceTask {
-  id: string;
-  title: string;
-  description: string;
-  assetId: string;
-  assetName: string;
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  status: 'pending' | 'in-progress' | 'completed' | 'overdue';
-  scheduledDate: Date;
-  completedDate?: Date;
-  assignedTo?: string;
-  estimatedCost?: number;
-  actualCost?: number;
-  recurring?: {
-    frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
-    interval: number;
-  };
-  category: 'plumbing' | 'electrical' | 'hvac' | 'general' | 'landscaping' | 'pest-control' | 'cleaning' | 'other';
-}
+import { PhotoViewerComponent } from './photo-viewer/photo-viewer.component';
+import { MaintenanceService, MaintenanceRequest, MaintenancePhoto, CreateMaintenanceRequest, UpdateMaintenanceStatusRequest } from '../../services/maintenance.service';
 
 @Component({
   selector: 'app-maintenance',
@@ -30,81 +12,60 @@ interface MaintenanceTask {
   standalone: false
 })
 export class MaintenancePage implements OnInit {
-  maintenanceTasks: MaintenanceTask[] = [
-    {
-      id: 'M-001',
-      title: 'HVAC System Inspection',
-      description: 'Quarterly HVAC system check and filter replacement',
-      assetId: 'P-456',
-      assetName: 'Business District, Downtown',
-      priority: 'high',
-      status: 'pending',
-      scheduledDate: new Date('2024-02-01'),
-      category: 'hvac',
-      recurring: {
-        frequency: 'monthly',
-        interval: 3
-      },
-      estimatedCost: 150
-    },
-    {
-      id: 'M-002',
-      title: 'Plumbing Leak Repair',
-      description: 'Fix leaking pipe in bathroom',
-      assetId: 'P-456',
-      assetName: 'Business District, Downtown',
-      priority: 'critical',
-      status: 'in-progress',
-      scheduledDate: new Date('2024-01-25'),
-      assignedTo: 'John Plumbing Services',
-      estimatedCost: 300,
-      category: 'plumbing'
-    },
-    {
-      id: 'M-003',
-      title: 'Landscaping Maintenance',
-      description: 'Monthly lawn care and garden maintenance',
-      assetId: 'P-789',
-      assetName: 'Agricultural Zone, Countryside',
-      priority: 'medium',
-      status: 'completed',
-      scheduledDate: new Date('2024-01-20'),
-      completedDate: new Date('2024-01-22'),
-      actualCost: 75,
-      category: 'landscaping',
-      recurring: {
-        frequency: 'monthly',
-        interval: 1
-      }
-    }
-  ];
-
-  filteredTasks: MaintenanceTask[] = [];
+  maintenanceTasks: MaintenanceRequest[] = [];
+  filteredTasks: MaintenanceRequest[] = [];
   searchTerm = '';
   selectedStatus = 'all';
   selectedPriority = 'all';
   selectedCategory = 'all';
+  isLoading = false;
 
   constructor(
     private router: Router,
     private modalController: ModalController,
     private alertController: AlertController,
     private toastController: ToastController,
-    private cdr: ChangeDetectorRef
+    private actionSheetController: ActionSheetController,
+    private cdr: ChangeDetectorRef,
+    private maintenanceService: MaintenanceService
   ) {}
 
   ngOnInit() {
-    this.filteredTasks = [...this.maintenanceTasks];
-    this.checkOverdueTasks();
+    this.loadMaintenanceTasks();
+  }
+
+  loadMaintenanceTasks() {
+    this.isLoading = true;
+    // Try to get property requests first (for owners), fallback to my requests (for tenants)
+    this.maintenanceService.getPropertyRequests().subscribe({
+      next: (tasks) => {
+        this.maintenanceTasks = tasks;
+        this.filteredTasks = [...tasks];
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        // If property requests fail, try my requests (tenant view)
+        this.maintenanceService.getMyRequests().subscribe({
+          next: (tasks) => {
+            this.maintenanceTasks = tasks;
+            this.filteredTasks = [...tasks];
+            this.isLoading = false;
+            this.cdr.detectChanges();
+          },
+          error: (error) => {
+            console.error('Error loading maintenance tasks:', error);
+            this.isLoading = false;
+            this.presentToast('Error loading maintenance tasks', 'danger');
+          }
+        });
+      }
+    });
   }
 
   checkOverdueTasks() {
-    const today = new Date();
-    this.maintenanceTasks.forEach(task => {
-      if (task.status === 'pending' && task.scheduledDate < today) {
-        task.status = 'overdue';
-      }
-    });
+    // Note: 'overdue' status doesn't exist in the backend - it's just 'PENDING'
+    // Overdue is a UI-only state based on time since reportedAt
     this.filterTasks();
   }
 
@@ -116,21 +77,24 @@ export class MaintenancePage implements OnInit {
       filtered = filtered.filter(task =>
         task.title.toLowerCase().includes(term) ||
         task.description.toLowerCase().includes(term) ||
-        task.assetName.toLowerCase().includes(term) ||
-        task.assignedTo?.toLowerCase().includes(term)
+        (task.propertyName || '').toLowerCase().includes(term)
       );
     }
 
     if (this.selectedStatus !== 'all') {
-      filtered = filtered.filter(task => task.status === this.selectedStatus);
+      // Map lowercase UI values to uppercase backend values
+      const statusMap: Record<string, string> = {
+        'pending': 'PENDING',
+        'in-progress': 'IN_PROGRESS',
+        'completed': 'RESOLVED'
+      };
+      const mappedStatus = statusMap[this.selectedStatus] || this.selectedStatus.toUpperCase();
+      filtered = filtered.filter(task => task.status === mappedStatus);
     }
 
     if (this.selectedPriority !== 'all') {
-      filtered = filtered.filter(task => task.priority === this.selectedPriority);
-    }
-
-    if (this.selectedCategory !== 'all') {
-      filtered = filtered.filter(task => task.category === this.selectedCategory);
+      const mappedPriority = this.selectedPriority.toUpperCase();
+      filtered = filtered.filter(task => task.priority === mappedPriority);
     }
 
     this.filteredTasks = filtered;
@@ -142,9 +106,8 @@ export class MaintenancePage implements OnInit {
     try {
       const modal = await this.modalController.create({
         component: AddMaintenanceTaskComponent,
-        cssClass: 'custom-maintenance-modal',
-        breakpoints: [0, 0.5, 0.9, 1],
-        initialBreakpoint: 0.9
+        cssClass: 'centered-modal',
+        backdropDismiss: false
       });
       
       console.log('Modal created successfully'); 
@@ -156,20 +119,32 @@ export class MaintenancePage implements OnInit {
       console.log('Modal dismissed with data:', data); 
       
       if (data) {
-        const newTask: MaintenanceTask = {
-          ...data,
-          id: this.generateTaskId(),
-          scheduledDate: new Date(data.scheduledDate),
-          completedDate: data.completedDate ? new Date(data.completedDate) : undefined
+        const createRequest: CreateMaintenanceRequest = {
+          leaseId: data.leaseId,
+          propertyId: data.propertyId || undefined,
+          unitId: data.unitId || undefined,
+          title: data.title,
+          description: data.description || '',
+          priority: data.priority,
+          assignedTechnician: data.assignedTechnician || undefined,
+          maintenanceCost: data.maintenanceCost || undefined
         };
         
-        console.log('New task created:', newTask); 
+        console.log('Creating maintenance request:', createRequest); 
         
-        this.maintenanceTasks = [newTask, ...this.maintenanceTasks];
-        this.filterTasks();
-        this.cdr.detectChanges();
-        this.presentToast('Maintenance task added successfully', 'success');
-        console.log('Task added successfully'); 
+        this.maintenanceService.createRequest(createRequest).subscribe({
+          next: (newTask) => {
+            console.log('Maintenance request created successfully:', newTask); 
+            this.maintenanceTasks = [newTask, ...this.maintenanceTasks];
+            this.filterTasks();
+            this.cdr.detectChanges();
+            this.presentToast('Maintenance request added successfully', 'success');
+          },
+          error: (error) => {
+            console.error('Error creating maintenance request:', error); 
+            this.presentToast('Error adding maintenance request', 'danger');
+          }
+        });
       }
     } catch (error) {
       console.error('Error in addMaintenanceTask:', error); 
@@ -177,39 +152,51 @@ export class MaintenancePage implements OnInit {
     }
   }
 
-  async editTask(task: MaintenanceTask) {
+  async editTask(task: MaintenanceRequest) {
     const modal = await this.modalController.create({
       component: AddMaintenanceTaskComponent,
       componentProps: {
         taskData: {
-          ...task,
-          scheduledDate: this.formatDateForInput(task.scheduledDate),
-          completedDate: task.completedDate ? this.formatDateForInput(task.completedDate) : ''
+          leaseId: task.leaseId || '',
+          propertyId: task.propertyId || '',
+          unitId: task.unitId,
+          title: task.title,
+          description: task.description,
+          priority: task.priority,
+          assignedTechnician: task.assignedTechnician,
+          maintenanceCost: task.maintenanceCost,
+          status: task.status
         }
       },
-      cssClass: 'custom-maintenance-modal',
-      breakpoints: [0, 0.5, 0.9, 1],
-      initialBreakpoint: 0.9
+      cssClass: 'centered-modal',
+      backdropDismiss: false
     });
     
     await modal.present();
     
     const { data } = await modal.onDidDismiss();
     if (data) {
-      const updatedTask: MaintenanceTask = {
-        ...data,
-        id: task.id,
-        scheduledDate: new Date(data.scheduledDate),
-        completedDate: data.completedDate ? new Date(data.completedDate) : undefined
+      const updateRequest: UpdateMaintenanceStatusRequest = {
+        status: data.status || task.status,
+        assignedTechnician: data.assignedTechnician,
+        maintenanceCost: data.maintenanceCost
       };
       
-      const index = this.maintenanceTasks.findIndex(t => t.id === task.id);
-      if (index !== -1) {
-        this.maintenanceTasks[index] = updatedTask;
-        this.filterTasks();
-        this.cdr.detectChanges();
-        this.presentToast('Maintenance task updated successfully', 'success');
-      }
+      this.maintenanceService.updateRequestStatus(task.requestId || task.id || '', updateRequest).subscribe({
+        next: (updatedTask) => {
+          const index = this.maintenanceTasks.findIndex(t => (t.requestId || t.id) === (task.requestId || task.id));
+          if (index !== -1) {
+            this.maintenanceTasks[index] = updatedTask;
+            this.filterTasks();
+            this.cdr.detectChanges();
+            this.presentToast('Maintenance task updated successfully', 'success');
+          }
+        },
+        error: (error) => {
+          console.error('Error updating maintenance task:', error);
+          this.presentToast('Error updating maintenance task', 'danger');
+        }
+      });
     }
   }
 
@@ -222,7 +209,7 @@ export class MaintenancePage implements OnInit {
     return date.toISOString().split('T')[0];
   }
 
-  async updateTaskStatus(task: MaintenanceTask) {
+  async updateTaskStatus(task: MaintenanceRequest) {
     const alert = await this.alertController.create({
       header: 'Update Task Status',
       inputs: [
@@ -230,65 +217,36 @@ export class MaintenancePage implements OnInit {
           name: 'status',
           type: 'radio',
           label: 'Pending',
-          value: 'pending',
-          checked: task.status === 'pending'
+          value: 'PENDING',
+          checked: task.status === 'PENDING'
         },
         {
           name: 'status',
           type: 'radio',
           label: 'In Progress',
-          value: 'in-progress',
-          checked: task.status === 'in-progress'
+          value: 'IN_PROGRESS',
+          checked: task.status === 'IN_PROGRESS'
         },
         {
           name: 'status',
           type: 'radio',
-          label: 'Completed',
-          value: 'completed',
-          checked: task.status === 'completed'
-        },
-        {
-          name: 'status',
-          type: 'radio',
-          label: 'Overdue',
-          value: 'overdue',
-          checked: task.status === 'overdue'
+          label: 'Resolved',
+          value: 'RESOLVED',
+          checked: task.status === 'RESOLVED'
         }
       ],
       buttons: [
         { text: 'Cancel', role: 'cancel' },
         {
           text: 'Update',
-          handler: async (data) => {
-            console.log('Alert handler data:', data); 
-            
+          handler: (data) => {
             const selectedStatus = data.status || data;
-            console.log('Selected status:', selectedStatus); 
             
             if (selectedStatus) {
-              const oldStatus = task.status;
-              task.status = selectedStatus;
-              
-              if (selectedStatus === 'completed') {
-                task.completedDate = new Date();
-              } else {
-                task.completedDate = undefined;
-              }
-              
-              if (selectedStatus === 'pending') {
-                this.checkOverdueTasks();
-              }
-              
-              this.maintenanceTasks = [...this.maintenanceTasks];
-              this.filterTasks();
-              
-              this.cdr.detectChanges();
-              
-              console.log('Status updated from', oldStatus, 'to', task.status);
-              this.presentToast(`Task status updated to ${selectedStatus.replace('-', ' ')}`, 'success');
+              // Use quickUpdateStatus to sync with backend
+              this.quickUpdateStatus(task, selectedStatus);
               return true;
             } else {
-              console.log('No status selected');
               this.presentToast('Please select a status', 'primary');
               return false;
             }
@@ -298,43 +256,38 @@ export class MaintenancePage implements OnInit {
     });
     
     await alert.present();
-    
-    const { data } = await alert.onDidDismiss();
-    console.log('Alert dismissed with data:', data);
   }
 
-  quickUpdateStatus(task: MaintenanceTask, newStatus: 'pending' | 'in-progress' | 'completed' | 'overdue') {
-    console.log('Quick update status called');
-    console.log('Task:', task);
-    console.log('New status:', newStatus);
-    
+  quickUpdateStatus(task: MaintenanceRequest, newStatus: 'PENDING' | 'IN_PROGRESS' | 'RESOLVED') {
     const oldStatus = task.status;
-    task.status = newStatus;
+    const requestId = task.requestId || task.id || '';
     
-    console.log('Status changed from', oldStatus, 'to', task.status);
+    const updateRequest: UpdateMaintenanceStatusRequest = {
+      status: newStatus as any,
+      assignedTechnician: task.assignedTechnician,
+      maintenanceCost: task.maintenanceCost
+    };
     
-    if (newStatus === 'completed') {
-      task.completedDate = new Date();
-      console.log('Set completed date to:', task.completedDate);
-    } else {
-      task.completedDate = undefined;
-      console.log('Cleared completed date');
-    }
-    
-    if (newStatus === 'pending') {
-      this.checkOverdueTasks();
-    }
-    
-    this.maintenanceTasks = [...this.maintenanceTasks];
-    this.filterTasks();
-    
-    this.cdr.detectChanges();
-    
-    console.log('Quick status update completed');
-    this.presentToast(`Task status updated to ${newStatus.replace('-', ' ')}`, 'success');
+    this.maintenanceService.updateRequestStatus(requestId, updateRequest).subscribe({
+      next: (updatedTask) => {
+        const index = this.maintenanceTasks.findIndex(t => (t.requestId || t.id) === requestId);
+        if (index !== -1) {
+          this.maintenanceTasks[index] = updatedTask;
+          this.maintenanceTasks = [...this.maintenanceTasks];
+          this.filterTasks();
+          this.cdr.detectChanges();
+        }
+        const statusLabel = newStatus.replace('_', ' ').toLowerCase();
+        this.presentToast(`Task status updated to ${statusLabel}`, 'success');
+      },
+      error: (error) => {
+        console.error('Error updating status:', error);
+        this.presentToast('Error updating task status', 'danger');
+      }
+    });
   }
 
-  async deleteTask(task: MaintenanceTask) {
+  async deleteTask(task: MaintenanceRequest) {
     const alert = await this.alertController.create({
       header: 'Delete Task',
       message: `Are you sure you want to delete "${task.title}"?`,
@@ -344,9 +297,19 @@ export class MaintenancePage implements OnInit {
           text: 'Delete',
           role: 'destructive',
           handler: () => {
-            this.maintenanceTasks = this.maintenanceTasks.filter(t => t.id !== task.id);
-            this.filterTasks();
-            this.presentToast('Task deleted', 'danger');
+            const requestId = task.requestId || task.id || '';
+            this.maintenanceService.deleteRequest(requestId).subscribe({
+              next: () => {
+                this.maintenanceTasks = this.maintenanceTasks.filter(t => (t.requestId || t.id) !== requestId);
+                this.filterTasks();
+                this.cdr.detectChanges();
+                this.presentToast('Task deleted', 'success');
+              },
+              error: (error) => {
+                console.error('Error deleting task:', error);
+                this.presentToast('Error deleting task', 'danger');
+              }
+            });
           }
         }
       ]
@@ -355,21 +318,19 @@ export class MaintenancePage implements OnInit {
   }
 
   getPriorityColor(priority: string): string {
-    switch (priority) {
-      case 'critical': return 'danger';
-      case 'high': return 'warning';
-      case 'medium': return 'primary';
-      case 'low': return 'success';
+    switch (priority?.toUpperCase()) {
+      case 'HIGH': return 'danger';
+      case 'MEDIUM': return 'warning';
+      case 'LOW': return 'success';
       default: return 'medium';
     }
   }
 
   getStatusColor(status: string): string {
     switch (status) {
-      case 'completed': return 'success';
-      case 'in-progress': return 'warning';
-      case 'overdue': return 'danger';
-      case 'pending': return 'medium';
+      case 'RESOLVED': return 'success';
+      case 'IN_PROGRESS': return 'warning';
+      case 'PENDING': return 'medium';
       default: return 'medium';
     }
   }
@@ -394,9 +355,12 @@ export class MaintenancePage implements OnInit {
     });
   }
 
-  isOverdue(task: MaintenanceTask): boolean {
-    return task.status === 'overdue' || 
-           (task.status === 'pending' && task.scheduledDate < new Date());
+  isOverdue(task: MaintenanceRequest): boolean {
+    // A task is considered overdue if it's PENDING and was reported more than 7 days ago
+    if (task.status !== 'PENDING') return false;
+    const reportedDate = new Date(task.reportedAt || task.createdAt || '');
+    const daysSinceReported = (Date.now() - reportedDate.getTime()) / (1000 * 60 * 60 * 24);
+    return daysSinceReported > 7;
   }
 
   private async presentToast(message: string, color: 'success' | 'danger' | 'primary' | 'medium') {
@@ -407,5 +371,167 @@ export class MaintenancePage implements OnInit {
       position: 'top',
     });
     await toast.present();
+  }
+
+  // Pull-to-refresh
+  doRefresh(event: any) {
+    this.maintenanceService.getPropertyRequests().subscribe({
+      next: (tasks) => {
+        this.maintenanceTasks = tasks;
+        this.filterTasks();
+        this.cdr.detectChanges();
+        event.target.complete();
+      },
+      error: () => {
+        this.maintenanceService.getMyRequests().subscribe({
+          next: (tasks) => {
+            this.maintenanceTasks = tasks;
+            this.filterTasks();
+            this.cdr.detectChanges();
+            event.target.complete();
+          },
+          error: () => {
+            event.target.complete();
+            this.presentToast('Error refreshing tasks', 'danger');
+          }
+        });
+      }
+    });
+  }
+
+  // Track by function for ngFor
+  trackByTaskId(index: number, task: MaintenanceRequest): string {
+    return task.requestId || task.id || index.toString();
+  }
+
+  // View photos for a task
+  async viewPhotos(task: MaintenanceRequest) {
+    const requestId = task.requestId || task.id || '';
+    
+    this.maintenanceService.getPhotos(requestId).subscribe({
+      next: async (photos) => {
+        if (photos.length === 0) {
+          this.presentToast('No photos attached to this task', 'medium');
+          return;
+        }
+
+        const photoUrls = photos.map(p => this.maintenanceService.getPhotoUrl(p.imageUrl));
+        
+        const modal = await this.modalController.create({
+          component: PhotoViewerComponent,
+          componentProps: { photoUrls },
+          cssClass: 'centered-modal',
+          backdropDismiss: false
+        });
+
+        await modal.present();
+      },
+      error: (error) => {
+        console.error('Error loading photos:', error);
+        this.presentToast('Error loading photos', 'danger');
+      }
+    });
+  }
+
+  // Upload media (photos/videos) for a task
+  async uploadPhoto(task: MaintenanceRequest) {
+    const actionSheet = await this.actionSheetController.create({
+      header: 'Add Media',
+      buttons: [
+        {
+          text: 'Take Photo',
+          icon: 'camera-outline',
+          handler: () => {
+            this.captureFromCamera(task, 'image');
+          }
+        },
+        {
+          text: 'Record Video',
+          icon: 'videocam-outline',
+          handler: () => {
+            this.captureFromCamera(task, 'video');
+          }
+        },
+        {
+          text: 'Choose from Gallery',
+          icon: 'images-outline',
+          handler: () => {
+            this.pickFromGallery(task);
+          }
+        },
+        {
+          text: 'Cancel',
+          icon: 'close-outline',
+          role: 'cancel'
+        }
+      ]
+    });
+    await actionSheet.present();
+  }
+
+  private captureFromCamera(task: MaintenanceRequest, type: 'image' | 'video') {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = type === 'image' ? 'image/*' : 'video/*';
+    input.capture = 'environment'; // Use rear camera
+    
+    input.onchange = (event: any) => {
+      const file = event.target.files[0];
+      if (file) {
+        this.uploadSingleFile(task, file);
+      }
+    };
+    
+    input.click();
+  }
+
+  private pickFromGallery(task: MaintenanceRequest) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*,video/*';
+    input.multiple = true;
+    
+    input.onchange = (event: any) => {
+      const files = Array.from(event.target.files) as File[];
+      if (files.length > 0) {
+        this.uploadMultipleFiles(task, files);
+      }
+    };
+    
+    input.click();
+  }
+
+  private uploadSingleFile(task: MaintenanceRequest, file: File) {
+    const requestId = task.requestId || task.id || '';
+    this.maintenanceService.uploadPhoto(requestId, file).subscribe({
+      next: () => {
+        this.presentToast('Media uploaded successfully', 'success');
+      },
+      error: (error) => {
+        console.error('Error uploading media:', error);
+        this.presentToast('Error uploading media', 'danger');
+      }
+    });
+  }
+
+  private uploadMultipleFiles(task: MaintenanceRequest, files: File[]) {
+    const requestId = task.requestId || task.id || '';
+    let uploaded = 0;
+    const total = files.length;
+
+    files.forEach(file => {
+      this.maintenanceService.uploadPhoto(requestId, file).subscribe({
+        next: () => {
+          uploaded++;
+          if (uploaded === total) {
+            this.presentToast(`${total} file(s) uploaded successfully`, 'success');
+          }
+        },
+        error: (error) => {
+          console.error('Error uploading file:', error);
+          this.presentToast(`Error uploading ${file.name}`, 'danger');
+        }
+      });
+    });
   }
 }

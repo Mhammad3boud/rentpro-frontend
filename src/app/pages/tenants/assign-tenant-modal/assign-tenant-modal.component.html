@@ -1,0 +1,122 @@
+<ion-header translucent>
+  <ion-toolbar>
+    <ion-title>Assign Tenant to Property</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="cancel()">✕</ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <p>Select a tenant and assign them to an available property/unit</p>
+
+  <!-- Tenant Selection -->
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Select Tenant</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <ion-searchbar placeholder="Search tenants..." [(ngModel)]="searchTerm"></ion-searchbar>
+      
+      <ion-list>
+        <ion-item *ngFor="let tenant of filteredTenants" button (click)="onTenantSelected(tenant)">
+          <ion-avatar slot="start">
+            <ion-icon name="person-circle" size="large"></ion-icon>
+          </ion-avatar>
+          <ion-label>
+            <h2>{{ tenant.fullName }}</h2>
+            <p>{{ tenant.email }} | {{ tenant.phone }}</p>
+            <p>Current: {{ tenant.propertyRef }} - {{ tenant.unitNo }}</p>
+          </ion-label>
+          <ion-chip slot="end" [color]="getTenantStatusColor(tenant)">
+            {{ getTenantStatus(tenant) }}
+          </ion-chip>
+          <ion-radio slot="end" [checked]="selectedTenant?.id === tenant.id"></ion-radio>
+        </ion-item>
+      </ion-list>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Property/Unit Selection -->
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Select Property and Unit</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <ion-searchbar placeholder="Search properties..." [(ngModel)]="unitSearchTerm"></ion-searchbar>
+      
+      <ion-list>
+        <ion-item *ngFor="let unit of filteredUnits" button (click)="onUnitSelected(unit)" [disabled]="!unit.isAvailable">
+          <ion-icon name="home-outline" slot="start"></ion-icon>
+          <ion-label>
+            <h2>{{ unit.propertyName }} - {{ unit.unitName }}</h2>
+            <p>{{ unit.propertyAddress }}</p>
+            <p *ngIf="unit.currentTenantName && !unit.isAvailable">Current tenant: {{ unit.currentTenantName }}</p>
+            <p *ngIf="unit.leaseEndDate">Lease ends: {{ unit.leaseEndDate | date:'mediumDate' }}</p>
+          </ion-label>
+          <ion-chip slot="end" [color]="getUnitStatusColor(unit)">
+            <ion-icon [name]="unit.isAvailable ? (unit.leaseStatus === 'EXPIRED' ? 'time-outline' : 'checkmark-circle') : 'close-circle'"></ion-icon>
+            {{ getUnitStatusLabel(unit) }}
+          </ion-chip>
+          <ion-radio slot="end" [checked]="selectedUnit?.leaseId === unit.leaseId" [disabled]="!unit.isAvailable"></ion-radio>
+        </ion-item>
+      </ion-list>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Assignment Details -->
+  <ion-card *ngIf="selectedTenant && selectedUnit">
+    <ion-card-header>
+      <ion-card-title>Assignment Details</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <ion-grid>
+        <ion-row>
+          <ion-col size="12">
+            <div class="assignment-summary">
+              <h3>Summary</h3>
+              <p><strong>Tenant:</strong> {{ selectedTenant.fullName }}</p>
+              <p><strong>Property:</strong> {{ selectedUnit.propertyName }} - {{ selectedUnit.unitName }}</p>
+              <p><strong>Address:</strong> {{ selectedUnit.propertyAddress }}</p>
+              <p><strong>Lease:</strong> {{ selectedUnit.leaseName }}</p>
+            </div>
+          </ion-col>
+        </ion-row>
+        
+        <ion-row>
+          <ion-col size="6">
+            <ion-item>
+              <ion-label position="stacked">Assignment Start Date *</ion-label>
+              <ion-input type="date" [(ngModel)]="assignmentData.startDate"></ion-input>
+            </ion-item>
+          </ion-col>
+          
+          <ion-col size="6">
+            <ion-item>
+              <ion-label position="stacked">Assignment End Date (Optional)</ion-label>
+              <ion-input type="date" [(ngModel)]="assignmentData.endDate"></ion-input>
+            </ion-item>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Loading Spinner -->
+  <div *ngIf="isLoading" class="ion-text-center ion-padding">
+    <ion-spinner></ion-spinner>
+    <p>Processing assignment...</p>
+  </div>
+
+  <!-- Action Buttons -->
+  <ion-row class="ion-justify-content-end ion-padding-top">
+    <ion-button fill="clear" (click)="cancel()">Cancel</ion-button>
+    <ion-button 
+      color="primary" 
+      (click)="assignTenant()" 
+      [disabled]="isLoading || !selectedTenant || !selectedUnit || !assignmentData.startDate">
+      <ion-icon name="link" slot="start"></ion-icon>
+      Assign Tenant
+    </ion-button>
+  </ion-row>
+</ion-content>

@@ -7,8 +7,6 @@
     --ion-text-color: #000000;
     --ion-text-color-rgb: 0, 0, 0;
     --ion-toolbar-background: #EBEBEB;
-    --ion-tab-bar-background: #ffffff;
-    --ion-tab-bar-color: var(--ion-text-color);
     --ion-border-color: #dadada;
     --ion-item-background: #ffffff;
     --ion-shadow: #f3f3f3;
@@ -70,7 +68,6 @@
     --ion-border-color: #313131;
     --ion-item-background: #191919;
     --ion-toolbar-background: #191919;
-    --ion-tab-bar-background: #191919;
     --ion-shadow: #0a0a0a;
     --ion-card-background: #191919;
     --ion-input-background: #191919;
@@ -153,20 +150,6 @@ ion-card {
 ion-button {
   --border-radius: 10px;
   font-weight: normal;
-}
-
-ion-tab-bar {
-  --background: var(--ion-toolbar-background);
-  --color: var(--ion-text-color);
-  --color-selected: var(--ion-color-primary);
-  padding-bottom: 20px;
-  padding-top: 10px;
-}
-
-ion-tab-button {
-  --background: var(--ion-toolbar-background);
-  --color: var(--ion-text-color);
-  --color-selected: var(--ion-color-primary);
 }
 
 ion-refresher {

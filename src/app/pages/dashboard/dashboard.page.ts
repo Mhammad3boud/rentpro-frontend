@@ -7,6 +7,9 @@ import { FormsModule } from '@angular/forms';
 import { ProfileImageModalComponent } from '../../components/profile-image-modal/profile-image-modal.component';
 import { DashboardService, OwnerDashboardResponse } from '../../services/dashboard.service';
 import { NotificationsService, NotificationItem } from '../../services/notification.service';
+import { ActivityService, ActivityItem } from '../../services/activity.service';
+import { UserService } from '../../services/user.service';
+import { UserProfileService } from 'src/app/services/user-profile.service';
 
 interface RecentActivity {
   id: string;
@@ -36,7 +39,7 @@ interface UpcomingReminder {
   imports: [IonicModule, CommonModule, FormsModule, RouterModule]
 })
 export class DashboardPage implements OnInit {
-  userName: string = 'MOHAMMED ABOUD HUSSEIN';
+  userName: string = 'User';
   role: string = 'Property Owner';
   notificationCount: number = 0;
 
@@ -50,14 +53,13 @@ export class DashboardPage implements OnInit {
     joinDate: '2024-01-15'
   };
 
-  totalProperties: number = 0; // backend dashboard doesn't provide this (keep 0 or add endpoint later)
-  totalTenants: number = 0;    // backend dashboard doesn't provide this (keep 0 or add endpoint later)
+  totalProperties: number = 0;
+  totalTenants: number = 0;
 
   monthlyRevenue: string = 'TZS 0';
   pendingMaintenance: number = 0;
-  activeContracts: number = 2; // backend dashboard doesn't provide this (keep 0 or add endpoint later)
+  activeContracts: number = 2;
 
-  // date range for backend dashboard
   from = '2026-02';
   to = '2026-06';
 
@@ -65,75 +67,86 @@ export class DashboardPage implements OnInit {
 
   constructor(
     private router: Router,
-    private alertController: AlertController,
     private modalController: ModalController,
+    private alertController: AlertController,
     private toastController: ToastController,
     private dashboardService: DashboardService,
-    private notificationsService: NotificationsService
-  ) { }
+    private notificationsService: NotificationsService,
+    private activityService: ActivityService,
+    private userService: UserService,
+    private userProfileService: UserProfileService
 
-  ngOnInit() {
+  ) {
+  }
+
+  async loadUserProfile() {
+    console.log('Loading user profile...');
+    try {
+      await this.userService.loadUserProfile();
+      // Update local variables with loaded profile
+      const profile = this.userService.getCurrentUser();
+      console.log('Profile loaded:', profile);
+      console.log('Profile fullName:', profile?.fullName);
+      console.log('Profile role:', profile?.role);
+      console.log('Profile email:', profile?.email);
+
+      if (profile) {
+        this.userName = profile.fullName || 'User';
+        this.role = profile.role === 'OWNER' ? 'Property Owner' : 'Tenant';
+        this.userProfile.email = profile.email || 'mohammed.aboud@rentpro.com';
+        this.userProfile.phone = profile.phone || '+255 123 456 789';
+        this.userProfile.profilePicture = profile.profilePicture || null;
+        console.log('Updated userName:', this.userName);
+        console.log('Updated role:', this.role);
+        console.log('Updated profilePicture:', this.userProfile.profilePicture);
+      } else {
+        console.log('No profile found, using fallback values');
+        this.userName = 'User';
+        this.role = 'Property Owner';
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+      // Fallback values
+      this.userName = 'User';
+      this.role = 'Property Owner';
+    }
+  }
+
+  async ngOnInit() {
+    await this.loadUserProfile();
     this.loadDashboard();
     this.loadUnreadCount();
+    this.loadRecentActivities();
   }
 
   loadDashboard() {
-    this.dashboardService.getOwnerDashboard(this.from, this.to).subscribe({
+    this.dashboardService.getOwnerDashboard().subscribe({
       next: (res) => {
         this.dashboard = res;
 
-        // 1) Monthly Revenue card (use average paid per month)
-        const monthsCount = Math.max(res.summary.months?.length ?? 0, 1);
-        const avgPaid = Number(res.summary.totalPaid ?? 0) / monthsCount;
-        this.monthlyRevenue = `TZS ${Math.round(avgPaid).toLocaleString()}`;
+        // Update dashboard metrics with new response structure
+        this.monthlyRevenue = `TZS ${Math.round(Number(res.monthlyRevenue ?? 0)).toLocaleString()}`;
+        this.pendingMaintenance = Number(res.maintenancePending ?? 0);
+        this.activeContracts = Number(res.activeLeases ?? 0);
 
-        // 2) Pending Tasks card (open + inProgress)
-        this.pendingMaintenance =
-          Number(res.maintenance?.open ?? 0) + Number(res.maintenance?.inProgress ?? 0);
+        // Use real counts from backend instead of separate API calls
+        this.totalProperties = Number(res.totalProperties ?? 0);
+        this.totalTenants = Number(res.totalTenants ?? 0);
 
-        // 3) Recent Activities list (from attentionInvoices + maintenance status summary)
-        const invoiceActivities: RecentActivity[] = (res.attentionInvoices ?? []).map(inv => ({
-          id: `inv-${inv.invoiceId}`,
-          type: 'overdue',
-          title: `Invoice ${inv.period} (${inv.status})`,
-          description: `Remaining TZS ${Number(inv.remaining ?? 0).toLocaleString()} • Due ${inv.dueDate}`,
-          timestamp: new Date(inv.dueDate),
-          icon: 'alert-circle-outline',
-          iconColor: inv.status === 'OVERDUE' ? 'danger' : 'warning'
-        }));
+        // Build reminders from dashboard data
+        this.buildReminders(res);
 
-        const maintenanceActivity: RecentActivity[] = [{
-          id: 'maint-summary',
-          type: 'maintenance',
-          title: 'Maintenance status',
-          description: `Open ${res.maintenance.open}, In-Progress ${res.maintenance.inProgress}, High Priority ${res.maintenance.highPriorityOpen}`,
-          timestamp: new Date(),
-          icon: 'build-outline',
-          iconColor: (res.maintenance.highPriorityOpen ?? 0) > 0 ? 'danger' : 'primary'
-        }];
-
-        this.recentActivities = [...invoiceActivities, ...maintenanceActivity]
-          .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-          .slice(0, 10);
-
-        // 4) Upcoming Reminders (next due dates from attention invoices)
-        const reminders: UpcomingReminder[] = (res.attentionInvoices ?? [])
-          .map((inv) => ({
-            id: `rem-inv-${inv.invoiceId}`,
-            type: 'rent' as const, 
-            title: `Rent due (${inv.period})`,
-            description: `Remaining TZS ${Number(inv.remaining ?? 0).toLocaleString()} • ${inv.status}`,
-            date: new Date(inv.dueDate),
-            icon: 'calendar-outline',
-            iconColor: (inv.status === 'OVERDUE' ? 'danger' : 'warning') as ('danger' | 'warning'),
-          }))
-          .sort((a, b) => a.date.getTime() - b.date.getTime())
-          .slice(0, 8);
-
-        this.upcomingReminders = reminders;
-
+        console.log('Dashboard data loaded:', res);
       },
       error: async (err: any) => {
+        console.error('Dashboard loading error:', err);
+        // Set fallback values
+        this.monthlyRevenue = 'TZS 0';
+        this.pendingMaintenance = 0;
+        this.activeContracts = 0;
+        this.totalProperties = 0;
+        this.totalTenants = 0;
+
         const toast = await this.toastController.create({
           message: err?.error?.message ?? 'Failed to load dashboard.',
           duration: 4000,
@@ -145,6 +158,120 @@ export class DashboardPage implements OnInit {
     });
   }
 
+  getProfilePictureUrl(): string {
+    return this.userProfileService.getProfilePictureUrl(this.userProfile?.profilePicture);
+  }
+
+  loadRecentActivities() {
+    this.activityService.getRecentActivities().subscribe({
+      next: (activities: ActivityItem[]) => {
+        // Convert activities to recent activities format
+        this.recentActivities = activities.map(a => this.activityToRecentActivity(a));
+      },
+      error: () => {
+        this.recentActivities = [];
+      }
+    });
+  }
+
+  private activityToRecentActivity(a: ActivityItem): RecentActivity {
+    // Map activity type to display type and colors
+    let type: 'payment' | 'maintenance' | 'lease' | 'overdue' = 'lease';
+    let icon = 'notifications-outline';
+    let iconColor: 'success' | 'primary' | 'warning' | 'danger' = 'primary';
+
+    const actType = a.type?.toUpperCase() || '';
+    if (actType.includes('PAYMENT')) {
+      type = 'payment';
+      icon = 'cash-outline';
+      iconColor = 'success';
+    } else if (actType.includes('MAINTENANCE')) {
+      type = 'maintenance';
+      icon = 'construct-outline';
+      iconColor = 'warning';
+    } else if (actType.includes('LEASE') || actType.includes('TENANT')) {
+      type = 'lease';
+      icon = 'document-text-outline';
+      iconColor = 'primary';
+    } else if (actType.includes('OVERDUE')) {
+      type = 'overdue';
+      icon = 'alert-circle-outline';
+      iconColor = 'danger';
+    } else if (actType.includes('PROPERTY')) {
+      type = 'lease';
+      icon = 'home-outline';
+      iconColor = 'primary';
+    }
+
+    return {
+      id: a.activityId,
+      type,
+      title: a.title,
+      description: a.description,
+      timestamp: new Date(a.createdAt),
+      icon,
+      iconColor
+    };
+  }
+
+  private buildReminders(dashboard: OwnerDashboardResponse) {
+    const reminders: UpcomingReminder[] = [];
+
+    // Add reminder for pending maintenance
+    if (dashboard.maintenancePending && Number(dashboard.maintenancePending) > 0) {
+      reminders.push({
+        id: 'maintenance-pending',
+        type: 'maintenance',
+        title: 'Pending Maintenance',
+        description: `${dashboard.maintenancePending} maintenance request(s) need attention`,
+        date: new Date(),
+        icon: 'construct-outline',
+        iconColor: 'warning'
+      });
+    }
+
+    // Add reminder for overdue payments
+    if (dashboard.overdueCount && Number(dashboard.overdueCount) > 0) {
+      reminders.push({
+        id: 'payments-overdue',
+        type: 'rent',
+        title: 'Overdue Payments',
+        description: `${dashboard.overdueCount} payment(s) are overdue`,
+        date: new Date(),
+        icon: 'alert-circle-outline',
+        iconColor: 'danger'
+      });
+    }
+
+    // Add reminder for partial payments
+    if (dashboard.partialCount && Number(dashboard.partialCount) > 0) {
+      reminders.push({
+        id: 'payments-partial',
+        type: 'rent',
+        title: 'Partial Payments',
+        description: `${dashboard.partialCount} payment(s) are partially paid`,
+        date: new Date(),
+        icon: 'cash-outline',
+        iconColor: 'warning'
+      });
+    }
+
+    // Add reminder for pending payments
+    if (dashboard.pendingCount && Number(dashboard.pendingCount) > 0) {
+      reminders.push({
+        id: 'payments-pending',
+        type: 'rent',
+        title: 'Pending Payments',
+        description: `${dashboard.pendingCount} payment(s) awaiting collection`,
+        date: new Date(),
+        icon: 'time-outline',
+        iconColor: 'primary'
+      });
+    }
+
+    this.upcomingReminders = reminders;
+  }
+
   loadUnreadCount() {
     this.notificationsService.getUnread().subscribe({
       next: (list: NotificationItem[]) => (this.notificationCount = list.length),
@@ -152,7 +279,6 @@ export class DashboardPage implements OnInit {
     });
   }
 
-  // your existing helpers still work
   getTimeAgo(timestamp: Date): string {
     const now = new Date();
     const diff = now.getTime() - timestamp.getTime();
@@ -179,15 +305,15 @@ export class DashboardPage implements OnInit {
   doRefresh(event: any) {
     this.loadDashboard();
     this.loadUnreadCount();
+    this.loadRecentActivities();
     setTimeout(() => event.target.complete(), 600);
   }
 
-  // keep your existing nav actions
   openSettings() { this.router.navigate(['/settings']); }
   openNotifications() { this.router.navigate(['/notifications']); }
   openAddProperty() { this.router.navigate(['/tabs/assets']); }
   openAddTenant() { this.router.navigate(['/tabs/tenants']); }
-  openRecordPayment() { this.router.navigate(['/tabs/contracts']); }
+  openRecordPayment() { this.router.navigate(['/tabs/rent-tracking']); }
 
   onActivityClick(activity: RecentActivity) {
     switch (activity.type) {
@@ -229,12 +355,4 @@ export class DashboardPage implements OnInit {
     await alert.present();
   }
 
-  async openProfile() {
-    const modal = await this.modalController.create({
-      component: ProfileImageModalComponent,
-      cssClass: 'profile-image-modal',
-      componentProps: { imageUrl: 'https://ionicframework.com/docs/img/demos/avatar.svg' }
-    });
-    return await modal.present();
-  }
 }

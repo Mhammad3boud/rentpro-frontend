@@ -81,4 +81,22 @@ ion-button.login-btn {
   color: var(--ion-color-primary-contrast);
   box-shadow: 0 4px 15px rgba(var(--ion-color-primary-rgb), 0.4);
   width: 100%;
+  margin-bottom: 1rem;
+}
+
+.register-link {
+  text-align: center;
+  
+  p {
+    color: var(--ion-color-medium);
+    font-size: 0.9rem;
+    margin: 0;
+  }
+
+  ion-button {
+    --padding-start: 0;
+    --padding-end: 0;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
 }

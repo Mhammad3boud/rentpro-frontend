@@ -1,0 +1,11 @@
+<div class="lease-selector">
+  <ion-label class="selector-label">Select Lease</ion-label>
+  <ion-select 
+    [value]="selectedLeaseId" 
+    (ionChange)="selectLease($event.detail.value)"
+    placeholder="Choose a lease">
+    <ion-select-option *ngFor="let lease of leases" [value]="lease.id">
+      {{lease.propertyName}} - {{lease.unitNumber}}
+    </ion-select-option>
+  </ion-select>
+</div>
