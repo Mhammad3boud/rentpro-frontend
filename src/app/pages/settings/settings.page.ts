@@ -3,7 +3,8 @@ import { AlertController, LoadingController, ToastController, ActionSheetControl
 import { Router } from '@angular/router';
 import { Location } from '@angular/common';
 import { UserProfileService } from '../../services/user-profile.service';
-import { UserProfile } from '../../models';
+import { UserService } from '../../services/user.service';
+import { UserProfile, ThemePreference } from '../../models';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -30,15 +31,10 @@ export class SettingsPage implements OnInit {
     private router: Router,
     private location: Location,
     private platform: Platform,
-    private userProfileService: UserProfileService
+    private userProfileService: UserProfileService,
+    private userService: UserService
   ) {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
-      this.darkMode = savedTheme === 'dark';
-      document.body.classList.toggle('dark', this.darkMode);
-    } else {
-      this.darkMode = document.body.classList.contains('dark');
-    }
+    this.darkMode = document.body.classList.contains('dark');
   }
 
   async ngOnInit() {
@@ -51,6 +47,7 @@ export class SettingsPage implements OnInit {
       this.userProfile = await firstValueFrom(this.userProfileService.getUserProfile());
       this.notificationEmail = this.userProfile?.notificationEmail ?? true;
       this.notificationPush = this.userProfile?.notificationPush ?? true;
+      this.applyThemePreference(this.userProfile?.themePreference || 'SYSTEM');
     } catch (error) {
       console.error('Failed to load user profile:', error);
       this.showToast('Failed to load profile');
@@ -63,9 +60,36 @@ export class SettingsPage implements OnInit {
     return this.userProfileService.getProfilePictureUrl(this.userProfile?.profilePicture);
   }
 
-  toggleDarkMode() {
-    document.body.classList.toggle('dark', this.darkMode);
-    localStorage.setItem('theme', this.darkMode ? 'dark' : 'light');
+  async toggleDarkMode() {
+    const preference: ThemePreference = this.darkMode ? 'DARK' : 'LIGHT';
+    this.applyThemePreference(preference);
+    try {
+      const updated = await firstValueFrom(this.userProfileService.updateProfile({
+        themePreference: preference
+      }));
+      this.userProfile = updated;
+      this.userService.setCurrentUserProfile(updated);
+    } catch (error) {
+      console.error('Failed to update theme preference:', error);
+      this.showToast('Failed to update theme preference');
+    }
+  }
+
+  private applyThemeClass(theme: 'light' | 'dark') {
+    document.body.classList.remove('dark', 'light');
+    document.body.classList.add(theme);
+  }
+
+  private applyThemePreference(preference: ThemePreference | 'SYSTEM') {
+    if (preference === 'SYSTEM') {
+      const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      this.darkMode = systemDark;
+      this.applyThemeClass(systemDark ? 'dark' : 'light');
+      return;
+    }
+
+    this.darkMode = preference === 'DARK';
+    this.applyThemeClass(this.darkMode ? 'dark' : 'light');
   }
 
   async toggleNotificationEmail() {
@@ -92,7 +116,7 @@ export class SettingsPage implements OnInit {
     if (window.history.length > 1) {
       this.location.back();
     } else {
-      this.router.navigate(['/dashboard']);
+      this.router.navigate(['/tabs/dashboard']);
     }
   }
 
@@ -324,6 +348,7 @@ export class SettingsPage implements OnInit {
                 address: data.address
               }));
               this.userProfile = updated;
+              this.userService.setCurrentUserProfile(updated);
               this.showToast('Profile updated', 'success');
               return true;
             } catch (error) {
@@ -362,12 +387,8 @@ export class SettingsPage implements OnInit {
         {
           text: 'Logout',
           handler: () => {
-            const theme = localStorage.getItem('theme');
             localStorage.clear();
             sessionStorage.clear();
-            if (theme) {
-              localStorage.setItem('theme', theme);
-            }
             this.router.navigate(['/login']);
           }
         }

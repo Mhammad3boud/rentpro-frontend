@@ -73,6 +73,18 @@
           [(ngModel)]="taskData.maintenanceCost">
         </ion-input>
       </ion-item>
+
+      <ion-item lines="none">
+        <ion-label position="stacked">Attach Image (Optional)</ion-label>
+        <input type="file" accept="image/*" (change)="onAttachmentSelected($event)" />
+      </ion-item>
+
+      <ion-item *ngIf="attachmentName" lines="none">
+        <ion-label>{{ attachmentName }}</ion-label>
+        <ion-button fill="clear" color="medium" (click)="removeAttachment()">
+          <ion-icon name="close-circle-outline" slot="icon-only"></ion-icon>
+        </ion-button>
+      </ion-item>
     </ion-list>
 
     <div class="action-buttons">

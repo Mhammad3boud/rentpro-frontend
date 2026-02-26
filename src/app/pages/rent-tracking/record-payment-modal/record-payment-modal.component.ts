@@ -33,6 +33,7 @@ export class RecordPaymentModalComponent implements OnInit {
     propertyNumber: '',
     month: '',
     amount: '',
+    monthsCovered: 1,
     paidDate: '',
     paymentMethod: '',
     reference: '',
@@ -108,6 +109,24 @@ export class RecordPaymentModalComponent implements OnInit {
     }
   }
 
+  onMonthsChanged() {
+    const parsed = Number(this.payment.monthsCovered);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      this.payment.monthsCovered = 1;
+      return;
+    }
+    this.payment.monthsCovered = Math.floor(parsed);
+  }
+
+  getTotalAmount(): number {
+    const monthlyAmount = Number(this.payment.amount || 0);
+    const monthsCovered = Number(this.payment.monthsCovered || 1);
+    if (!Number.isFinite(monthlyAmount) || !Number.isFinite(monthsCovered)) {
+      return 0;
+    }
+    return monthlyAmount * monthsCovered;
+  }
+
   cancel() {
     this.modalCtrl.dismiss();
   }
@@ -117,6 +136,7 @@ export class RecordPaymentModalComponent implements OnInit {
     if (!this.payment.leaseId && this.selectedLeaseId) {
       this.payment.leaseId = this.selectedLeaseId;
     }
+    this.onMonthsChanged();
     console.log('Payment recorded:', this.payment);
     this.modalCtrl.dismiss(this.payment);
   }

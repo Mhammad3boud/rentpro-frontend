@@ -13,34 +13,31 @@ export class UserService {
 
   async loadUserProfile(): Promise<void> {
     try {
-      console.log('Calling getUserProfile API...');
       const profile = await firstValueFrom(this.userProfileService.getUserProfile());
-      console.log('API response:', profile);
-      this.userProfile = profile ?? null;
-
-      const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
-      if (this.userProfile) {
-        console.log('Setting profile data to storage:', this.userProfile);
-        storage.setItem('userId', this.userProfile.userId);
-        storage.setItem('email', this.userProfile.email);
-        storage.setItem('role', this.userProfile.role);
-        if (this.userProfile.fullName) storage.setItem('userName', this.userProfile.fullName);
-        if (this.userProfile.phone) storage.setItem('userPhone', this.userProfile.phone);
+      if (profile) {
+        this.setCurrentUserProfile(profile);
       } else {
-        console.log('No profile data from API');
+        this.userProfile = null;
       }
     } catch (e) {
       console.error('Failed to load user profile', e);
     }
   }
 
+  setCurrentUserProfile(profile: UserProfile): void {
+    this.userProfile = profile;
+
+    const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
+    storage.setItem('userId', profile.userId);
+    storage.setItem('email', profile.email);
+    storage.setItem('role', profile.role);
+    if (profile.fullName) storage.setItem('userName', profile.fullName);
+    if (profile.phone) storage.setItem('userPhone', profile.phone);
+  }
+
   getCurrentUser(): CurrentUser | null {
-    console.log('getCurrentUser called, userProfile:', this.userProfile);
-    
     if (this.userProfile) {
-      const result = { ...this.userProfile };
-      console.log('Returning from userProfile:', result);
-      return result;
+      return { ...this.userProfile };
     }
 
     const email = localStorage.getItem('email') || sessionStorage.getItem('email');
@@ -49,16 +46,11 @@ export class UserService {
     const fullName = localStorage.getItem('userName') || sessionStorage.getItem('userName') || '';
     const phone = localStorage.getItem('userPhone') || sessionStorage.getItem('userPhone') || '';
 
-    console.log('Storage data - email:', email, 'userId:', userId, 'role:', role, 'fullName:', fullName);
-
     if (!email || !userId || !role) {
-      console.log('Missing required storage data, returning null');
       return null;
     }
     
-    const result = { userId, email, role, fullName, phone };
-    console.log('Returning from storage:', result);
-    return result;
+    return { userId, email, role, fullName, phone };
   }
 
   getCurrentUserName(): string {

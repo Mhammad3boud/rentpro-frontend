@@ -4,6 +4,7 @@ import { ModalController, AlertController, ToastController } from '@ionic/angula
 import { GenerateContractModalComponent } from './generate-contract-modal/generate-contract-modal.component';
 import { LeaseService } from '../../services/lease.service';
 import { Lease } from '../../models';
+import { UserService } from '../../services/user.service';
 
 
 interface Contract {
@@ -30,6 +31,7 @@ export class ContractsPage implements OnInit {
   filteredContracts: Contract[] = [];
   searchTerm = '';
   isLoading = true;
+  isTenant = false;
   private readonly baseUrl = 'http://localhost:8083';
 
   constructor(
@@ -37,16 +39,18 @@ export class ContractsPage implements OnInit {
     private alertController: AlertController,
     private toastController: ToastController,
     private leaseService: LeaseService,
+    private userService: UserService,
     private http: HttpClient,
     private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit() {
+    this.isTenant = this.userService.isTenant();
     this.loadContracts();
   }
 
   doRefresh(event: any) {
-    this.leaseService.getMyLeases().subscribe({
+    this.getLeasesForCurrentRole().subscribe({
       next: (leases) => {
         this.contracts = leases.map((lease) => this.mapLeaseToContract(lease));
         this.filterContracts();
@@ -63,7 +67,7 @@ export class ContractsPage implements OnInit {
 
   loadContracts() {
     this.isLoading = true;
-    this.leaseService.getMyLeases().subscribe({
+    this.getLeasesForCurrentRole().subscribe({
       next: (leases) => {
         console.log('Loaded leases:', leases);
         this.contracts = leases.map((lease) => this.mapLeaseToContract(lease));
@@ -80,6 +84,12 @@ export class ContractsPage implements OnInit {
     });
   }
 
+  private getLeasesForCurrentRole() {
+    return this.isTenant
+      ? this.leaseService.getTenantLeases()
+      : this.leaseService.getMyLeases();
+  }
+
   private mapLeaseToContract(lease: Lease): Contract {
     const propertyName = lease.property?.propertyName || lease.property?.address || 'Unknown Property';
     const unitNumber = lease.unit?.unitNumber;
@@ -88,7 +98,7 @@ export class ContractsPage implements OnInit {
     return {
       id: `CNT-${lease.leaseId.slice(0, 8).toUpperCase()}`,
       leaseId: lease.leaseId,
-      tenant: lease.tenant?.fullName || 'Unknown Tenant',
+      tenant: this.isTenant ? (lease.tenant?.fullName || 'Me') : (lease.tenant?.fullName || 'Unknown Tenant'),
       property: propertyDisplay,
       startDate: lease.startDate || '',
       endDate: lease.endDate || '',

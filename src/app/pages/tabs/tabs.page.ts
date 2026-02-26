@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { Platform } from '@ionic/angular';
+import { UserService } from '../../services/user.service';
 
 interface SidebarItem {
   icon: string;
@@ -26,7 +27,7 @@ export class TabsPage implements OnInit, OnDestroy {
   private routerSubscription: any;
   private backButtonSubscription: any;
 
-  sidebarItems: SidebarItem[] = [
+  private ownerSidebarItems: SidebarItem[] = [
     {
       icon: 'home-outline',
       label: 'Dashboard',
@@ -58,13 +59,38 @@ export class TabsPage implements OnInit, OnDestroy {
       path: '/tabs/maintenance'
     }
   ];
+  private tenantSidebarItems: SidebarItem[] = [
+    {
+      icon: 'home-outline',
+      label: 'Dashboard',
+      path: '/tabs/dashboard'
+    },
+    {
+      icon: 'document-text-outline',
+      label: 'My Lease',
+      path: '/tabs/contracts'
+    },
+    {
+      icon: 'cash-outline',
+      label: 'Rent',
+      path: '/tabs/rent-tracking'
+    },
+    {
+      icon: 'build-outline',
+      label: 'Maintenance',
+      path: '/tabs/maintenance'
+    }
+  ];
+  sidebarItems: SidebarItem[] = [];
 
   constructor(
     private router: Router,
-    private platform: Platform
+    private platform: Platform,
+    private userService: UserService
   ) {}
 
   ngOnInit() {
+    this.configureSidebarItems();
     this.checkScreenSize();
     this.resizeListener = () => this.checkScreenSize();
     window.addEventListener('resize', this.resizeListener);
@@ -86,6 +112,12 @@ export class TabsPage implements OnInit, OnDestroy {
 
     // Handle back button on mobile
     this.setupBackButtonHandler();
+  }
+
+  private configureSidebarItems() {
+    this.sidebarItems = this.userService.isTenant()
+      ? [...this.tenantSidebarItems]
+      : [...this.ownerSidebarItems];
   }
 
   ngOnDestroy() {

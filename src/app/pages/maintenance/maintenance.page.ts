@@ -1,9 +1,10 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { ModalController, AlertController, ToastController, ActionSheetController } from '@ionic/angular';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AddMaintenanceTaskComponent } from './add-maintenance-task/add-maintenance-task.component';
 import { PhotoViewerComponent } from './photo-viewer/photo-viewer.component';
 import { MaintenanceService, MaintenanceRequest, MaintenancePhoto, CreateMaintenanceRequest, UpdateMaintenanceStatusRequest } from '../../services/maintenance.service';
+import { UserService } from '../../services/user.service';
 
 @Component({
   selector: 'app-maintenance',
@@ -19,6 +20,8 @@ export class MaintenancePage implements OnInit {
   selectedPriority = 'all';
   selectedCategory = 'all';
   isLoading = false;
+  isTenant = false;
+  highlightedRequestId: string | null = null;
 
   constructor(
     private router: Router,
@@ -27,38 +30,37 @@ export class MaintenancePage implements OnInit {
     private toastController: ToastController,
     private actionSheetController: ActionSheetController,
     private cdr: ChangeDetectorRef,
-    private maintenanceService: MaintenanceService
+    private maintenanceService: MaintenanceService,
+    private userService: UserService,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit() {
+    this.isTenant = this.userService.isTenant();
+    this.route.queryParamMap.subscribe(params => {
+      this.highlightedRequestId = params.get('requestId');
+    });
     this.loadMaintenanceTasks();
   }
 
   loadMaintenanceTasks() {
     this.isLoading = true;
-    // Try to get property requests first (for owners), fallback to my requests (for tenants)
-    this.maintenanceService.getPropertyRequests().subscribe({
+    const request$ = this.isTenant
+      ? this.maintenanceService.getMyRequests()
+      : this.maintenanceService.getPropertyRequests();
+
+    request$.subscribe({
       next: (tasks) => {
-        this.maintenanceTasks = tasks;
+        this.maintenanceTasks = this.prioritizeHighlightedTask(tasks);
         this.filteredTasks = [...tasks];
+        this.filteredTasks = this.prioritizeHighlightedTask(this.filteredTasks);
         this.isLoading = false;
         this.cdr.detectChanges();
       },
-      error: () => {
-        // If property requests fail, try my requests (tenant view)
-        this.maintenanceService.getMyRequests().subscribe({
-          next: (tasks) => {
-            this.maintenanceTasks = tasks;
-            this.filteredTasks = [...tasks];
-            this.isLoading = false;
-            this.cdr.detectChanges();
-          },
-          error: (error) => {
-            console.error('Error loading maintenance tasks:', error);
-            this.isLoading = false;
-            this.presentToast('Error loading maintenance tasks', 'danger');
-          }
-        });
+      error: (error) => {
+        console.error('Error loading maintenance tasks:', error);
+        this.isLoading = false;
+        this.presentToast('Error loading maintenance tasks', 'danger');
       }
     });
   }
@@ -134,7 +136,27 @@ export class MaintenancePage implements OnInit {
         
         this.maintenanceService.createRequest(createRequest).subscribe({
           next: (newTask) => {
-            console.log('Maintenance request created successfully:', newTask); 
+            console.log('Maintenance request created successfully:', newTask);
+            const attachedFile: File | undefined = data.attachmentFile;
+            if (attachedFile) {
+              const requestId = newTask.requestId || newTask.id || '';
+              this.maintenanceService.uploadPhoto(requestId, attachedFile).subscribe({
+                next: () => {
+                  this.maintenanceTasks = [newTask, ...this.maintenanceTasks];
+                  this.filterTasks();
+                  this.cdr.detectChanges();
+                  this.presentToast('Maintenance request added successfully', 'success');
+                },
+                error: () => {
+                  this.maintenanceTasks = [newTask, ...this.maintenanceTasks];
+                  this.filterTasks();
+                  this.cdr.detectChanges();
+                  this.presentToast('Request submitted but image upload failed', 'danger');
+                }
+              });
+              return;
+            }
+
             this.maintenanceTasks = [newTask, ...this.maintenanceTasks];
             this.filterTasks();
             this.cdr.detectChanges();
@@ -153,6 +175,10 @@ export class MaintenancePage implements OnInit {
   }
 
   async editTask(task: MaintenanceRequest) {
+    if (this.isTenant) {
+      return;
+    }
+
     const modal = await this.modalController.create({
       component: AddMaintenanceTaskComponent,
       componentProps: {
@@ -210,6 +236,10 @@ export class MaintenancePage implements OnInit {
   }
 
   async updateTaskStatus(task: MaintenanceRequest) {
+    if (this.isTenant) {
+      return;
+    }
+
     const alert = await this.alertController.create({
       header: 'Update Task Status',
       inputs: [
@@ -259,6 +289,10 @@ export class MaintenancePage implements OnInit {
   }
 
   quickUpdateStatus(task: MaintenanceRequest, newStatus: 'PENDING' | 'IN_PROGRESS' | 'RESOLVED') {
+    if (this.isTenant) {
+      return;
+    }
+
     const oldStatus = task.status;
     const requestId = task.requestId || task.id || '';
     
@@ -288,6 +322,10 @@ export class MaintenancePage implements OnInit {
   }
 
   async deleteTask(task: MaintenanceRequest) {
+    if (this.isTenant) {
+      return;
+    }
+
     const alert = await this.alertController.create({
       header: 'Delete Task',
       message: `Are you sure you want to delete "${task.title}"?`,
@@ -375,7 +413,11 @@ export class MaintenancePage implements OnInit {
 
   // Pull-to-refresh
   doRefresh(event: any) {
-    this.maintenanceService.getPropertyRequests().subscribe({
+    const request$ = this.isTenant
+      ? this.maintenanceService.getMyRequests()
+      : this.maintenanceService.getPropertyRequests();
+
+    request$.subscribe({
       next: (tasks) => {
         this.maintenanceTasks = tasks;
         this.filterTasks();
@@ -383,18 +425,8 @@ export class MaintenancePage implements OnInit {
         event.target.complete();
       },
       error: () => {
-        this.maintenanceService.getMyRequests().subscribe({
-          next: (tasks) => {
-            this.maintenanceTasks = tasks;
-            this.filterTasks();
-            this.cdr.detectChanges();
-            event.target.complete();
-          },
-          error: () => {
-            event.target.complete();
-            this.presentToast('Error refreshing tasks', 'danger');
-          }
-        });
+        event.target.complete();
+        this.presentToast('Error refreshing tasks', 'danger');
       }
     });
   }
@@ -402,6 +434,20 @@ export class MaintenancePage implements OnInit {
   // Track by function for ngFor
   trackByTaskId(index: number, task: MaintenanceRequest): string {
     return task.requestId || task.id || index.toString();
+  }
+
+  private prioritizeHighlightedTask(tasks: MaintenanceRequest[]): MaintenanceRequest[] {
+    if (!this.highlightedRequestId) {
+      return tasks;
+    }
+
+    const highlighted = tasks.find(t => (t.requestId || t.id) === this.highlightedRequestId);
+    if (!highlighted) {
+      return tasks;
+    }
+
+    const rest = tasks.filter(t => (t.requestId || t.id) !== this.highlightedRequestId);
+    return [highlighted, ...rest];
   }
 
   // View photos for a task

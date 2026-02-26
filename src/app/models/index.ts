@@ -13,6 +13,7 @@ export type MaintenanceStatus = 'PENDING' | 'IN_PROGRESS' | 'RESOLVED';
 export type PredictionType = 'LATE_PAYMENT' | 'MAINTENANCE_RISK';
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 export type NotificationType = 'RENT_DUE' | 'RENT_OVERDUE' | 'MAINTENANCE_UPDATE' | 'LEASE_EXPIRY';
+export type ThemePreference = 'LIGHT' | 'DARK' | 'SYSTEM';
 
 /**
  * User entity (Authentication)
@@ -167,6 +168,8 @@ export interface Notification {
   type: NotificationType;
   title?: string;
   message?: string;
+  entityType?: string;
+  entityId?: string;
   isRead: boolean;
   createdAt: string;
 }
@@ -194,6 +197,7 @@ export interface UserProfile {
   profilePicture?: string;
   notificationEmail?: boolean;
   notificationPush?: boolean;
+  themePreference?: ThemePreference;
 }
 
 /**
@@ -205,6 +209,7 @@ export interface UpdateProfileRequest {
   address?: string;
   notificationEmail?: boolean;
   notificationPush?: boolean;
+  themePreference?: ThemePreference;
 }
 
 /**

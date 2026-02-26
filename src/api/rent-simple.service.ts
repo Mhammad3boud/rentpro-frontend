@@ -42,8 +42,7 @@ export class RentSimpleService {
         const monthlyRent = lease.monthlyRent || 0;
 
         try {
-          const paymentsResponse = await this.http.get(`${this.baseUrl}/payments/leases/${leaseId}`).toPromise();
-          const payments: any[] = (paymentsResponse as any[]) || [];
+          const payments = await this.fetchLeasePayments(leaseId);
 
           if (payments.length > 0) {
             // Convert each payment to a rent record  
@@ -60,7 +59,8 @@ export class RentSimpleService {
                 paidDate: payment.paidDate || undefined,
                 method: payment.paymentMethod || undefined,
                 leaseId: leaseId,
-                amountPaid: payment.amountPaid || 0
+                amountPaid: payment.amountPaid || 0,
+                isAdvance: this.isAdvancePayment(payment.monthYear, payment.paidDate)
               };
               rentRecords.push(record);
             });
@@ -107,6 +107,64 @@ export class RentSimpleService {
       console.error('Error fetching rent records:', error);
       return [];
     }
+  }
+
+  private async fetchLeasePayments(leaseId: string): Promise<any[]> {
+    // Preferred endpoint: returns flat payment rows
+    try {
+      const allResponse = await this.http
+        .get(`${this.baseUrl}/payments/leases/${leaseId}/all`)
+        .toPromise();
+      if (Array.isArray(allResponse)) {
+        return allResponse as any[];
+      }
+    } catch (error) {
+      console.warn(`Fallback to lease payment status endpoint for lease ${leaseId}`, error);
+    }
+
+    // Fallback endpoint: can return either RentPayment[] or LeasePaymentStatus
+    const response = await this.http
+      .get(`${this.baseUrl}/payments/leases/${leaseId}`)
+      .toPromise();
+
+    if (Array.isArray(response)) {
+      return response as any[];
+    }
+
+    const months = (response as any)?.months;
+    if (!Array.isArray(months)) {
+      return [];
+    }
+
+    const flattened: any[] = [];
+    months.forEach((month: any) => {
+      if (Array.isArray(month?.payments) && month.payments.length > 0) {
+        month.payments.forEach((p: any) => {
+          flattened.push({
+            paymentId: p.paymentId || `${leaseId}-${month.month}`,
+            monthYear: p.monthYear || month.month,
+            dueDate: p.dueDate || month.dueDate,
+            amountExpected: p.amountExpected ?? month.amount ?? 0,
+            amountPaid: p.amountPaid ?? month.paidAmount ?? 0,
+            paymentStatus: p.paymentStatus || month.status || 'PENDING',
+            paidDate: p.paidDate,
+            paymentMethod: p.paymentMethod
+          });
+        });
+        return;
+      }
+
+      flattened.push({
+        paymentId: `${leaseId}-${month.month}`,
+        monthYear: month.month,
+        dueDate: month.dueDate,
+        amountExpected: month.amount ?? 0,
+        amountPaid: month.paidAmount ?? 0,
+        paymentStatus: month.status || 'PENDING'
+      });
+    });
+
+    return flattened;
   }
 
   async createPayment(paymentData: CreatePaymentRequest) {
@@ -188,6 +246,14 @@ export class RentSimpleService {
       default: return 'Pending';
     }
   }
+
+  private isAdvancePayment(monthYear?: string, paidDate?: string): boolean {
+    if (!monthYear || !paidDate) {
+      return false;
+    }
+    const monthStart = `${monthYear.slice(0, 7)}-01`;
+    return paidDate.slice(0, 10) < monthStart;
+  }
 }
 
 export interface RentRecord {
@@ -203,6 +269,7 @@ export interface RentRecord {
   method?: string;
   leaseId: string;
   amountPaid?: number;
+  isAdvance?: boolean;
 }
 
 export interface CreatePaymentRequest {

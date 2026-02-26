@@ -1,7 +1,7 @@
 <ion-header>
   <ion-toolbar>
-    <ion-title>Rent Tracking</ion-title>
-    <ion-buttons slot="end">
+    <ion-title>{{ isTenant ? 'My Rent' : 'Rent Tracking' }}</ion-title>
+    <ion-buttons slot="end" *ngIf="!isTenant">
       <ion-button color="success" (click)="openRecordPaymentModal()">
         <ion-icon slot="icon-only" name="add-outline"></ion-icon>
       </ion-button>
@@ -21,14 +21,14 @@
 
   <div class="summary-cards">
     <div class="card" id="total">
-      <h3>Total Revenue</h3>
+      <h3>{{ isTenant ? 'Total Paid' : 'Total Revenue' }}</h3>
       <h2>TZS {{ totalRevenue | number:'1.0-0' }}</h2>
-      <p>Collected this period</p>
+      <p>{{ isTenant ? 'Paid amount history' : 'Collected this period' }}</p>
     </div>
     <div class="card" id="pending">
-      <h3>Pending Amount</h3>
+      <h3>{{ isTenant ? 'Outstanding Balance' : 'Pending Amount' }}</h3>
       <h2>TZS {{ pendingAmount | number:'1.0-0' }}</h2>
-      <p>Awaiting payment</p>
+      <p>{{ isTenant ? 'Expected minus paid' : 'Awaiting payment' }}</p>
     </div>
     <div class="card" id="overdue">
       <h3>Overdue Amount</h3>
@@ -36,9 +36,9 @@
       <p>Requires attention</p>
     </div>
     <div class="card" id="active">
-      <h3>Active Leases</h3>
+      <h3>{{ isTenant ? 'My Leases' : 'Active Leases' }}</h3>
       <h2>{{ activeLeases }}</h2>
-      <p>Generating revenue</p>
+      <p>{{ isTenant ? 'Linked to payments' : 'Generating revenue' }}</p>
     </div>
   </div>
 
@@ -47,7 +47,7 @@
       <ion-icon name="search-outline"></ion-icon>
       <input
         type="text"
-        placeholder="Search by tenant name, property, or unit..."
+        [placeholder]="isTenant ? 'Search by property, unit, or month...' : 'Search by tenant name, property, or unit...'"
         [(ngModel)]="searchTerm"
         (input)="filterRecords()"
       />
@@ -76,14 +76,28 @@
   </div>
 
   <div class="table-section">
-    <h3>Rent Payment Records</h3>
-    <p>Track and manage all rent payments</p>
+    <div class="table-header">
+      <div>
+        <h3>{{ isTenant ? 'My Rent Payment History' : 'Rent Payment Records' }}</h3>
+        <p>{{ isTenant ? 'Track your rent status and outstanding balances' : 'Track and manage all rent payments' }}</p>
+      </div>
+      <div class="table-actions">
+        <ion-button size="small" fill="outline" color="medium" (click)="printPayments()">
+          <ion-icon slot="start" name="print-outline"></ion-icon>
+          Print
+        </ion-button>
+        <ion-button size="small" fill="solid" color="primary" (click)="downloadPaymentsPdf()">
+          <ion-icon slot="start" name="document-outline"></ion-icon>
+          Download PDF
+        </ion-button>
+      </div>
+    </div>
 
     <div class="table-wrapper">
       <table>
         <thead>
           <tr>
-            <th>Tenant</th>
+            <th *ngIf="!isTenant">Tenant</th>
             <th>Property/Unit</th>
             <th>Month</th>
             <th>Due Date</th>
@@ -91,12 +105,12 @@
             <th>Status</th>
             <th>Paid Date</th>
             <th>Method</th>
-            <th>Actions</th>
+            <th *ngIf="!isTenant">Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let record of filteredRecords">
-            <td>{{ record.tenant }}</td>
+            <td *ngIf="!isTenant">{{ record.tenant }}</td>
             <td>{{ record.property }}</td>
             <td>{{ record.month }}</td>
             <td>{{ record.dueDate }}</td>
@@ -121,10 +135,13 @@
                 ></ion-icon>
                 {{ record.status }}
               </ion-badge>
+              <ion-badge *ngIf="record.isAdvance" color="primary" class="advance-badge">
+                Advance
+              </ion-badge>
             </td>
             <td>{{ record.paidDate || '-' }}</td>
             <td>{{ record.method || '-' }}</td>
-            <td>
+            <td *ngIf="!isTenant">
               <div class="actions">
                 <ion-button size="small" fill="outline" color="medium" (click)="editPayment(record)">
                   <ion-icon slot="start" name="create-outline"></ion-icon>
@@ -153,6 +170,11 @@
                   Delete
                 </ion-button>
               </div>
+            </td>
+          </tr>
+          <tr *ngIf="filteredRecords.length === 0">
+            <td [attr.colspan]="isTenant ? 7 : 9" class="empty-row">
+              {{ isTenant ? 'No rent records found for your account.' : 'No rent records found.' }}
             </td>
           </tr>
         </tbody>

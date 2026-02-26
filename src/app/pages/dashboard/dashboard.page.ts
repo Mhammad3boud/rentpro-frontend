@@ -5,11 +5,13 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import { ProfileImageModalComponent } from '../../components/profile-image-modal/profile-image-modal.component';
-import { DashboardService, OwnerDashboardResponse } from '../../services/dashboard.service';
+import { DashboardService, OwnerDashboardResponse, TenantDashboardResponse } from '../../services/dashboard.service';
 import { NotificationsService, NotificationItem } from '../../services/notification.service';
 import { ActivityService, ActivityItem } from '../../services/activity.service';
 import { UserService } from '../../services/user.service';
 import { UserProfileService } from 'src/app/services/user-profile.service';
+import { LeaseService } from '../../services/lease.service';
+import { Lease } from '../../models';
 
 interface RecentActivity {
   id: string;
@@ -39,9 +41,13 @@ interface UpcomingReminder {
   imports: [IonicModule, CommonModule, FormsModule, RouterModule]
 })
 export class DashboardPage implements OnInit {
+  private readonly listLimit = 5;
   userName: string = 'User';
   role: string = 'Property Owner';
+  isTenant = false;
   notificationCount: number = 0;
+  showAllRecentActivities = false;
+  showAllUpcomingReminders = false;
 
   recentActivities: RecentActivity[] = [];
   upcomingReminders: UpcomingReminder[] = [];
@@ -64,6 +70,8 @@ export class DashboardPage implements OnInit {
   to = '2026-06';
 
   private dashboard?: OwnerDashboardResponse;
+  tenantDashboard?: TenantDashboardResponse;
+  tenantLeases: Lease[] = [];
 
   constructor(
     private router: Router,
@@ -74,33 +82,26 @@ export class DashboardPage implements OnInit {
     private notificationsService: NotificationsService,
     private activityService: ActivityService,
     private userService: UserService,
-    private userProfileService: UserProfileService
+    private userProfileService: UserProfileService,
+    private leaseService: LeaseService
 
   ) {
   }
 
   async loadUserProfile() {
-    console.log('Loading user profile...');
     try {
       await this.userService.loadUserProfile();
       // Update local variables with loaded profile
       const profile = this.userService.getCurrentUser();
-      console.log('Profile loaded:', profile);
-      console.log('Profile fullName:', profile?.fullName);
-      console.log('Profile role:', profile?.role);
-      console.log('Profile email:', profile?.email);
 
       if (profile) {
         this.userName = profile.fullName || 'User';
         this.role = profile.role === 'OWNER' ? 'Property Owner' : 'Tenant';
+        this.isTenant = profile.role === 'TENANT';
         this.userProfile.email = profile.email || 'mohammed.aboud@rentpro.com';
         this.userProfile.phone = profile.phone || '+255 123 456 789';
         this.userProfile.profilePicture = profile.profilePicture || null;
-        console.log('Updated userName:', this.userName);
-        console.log('Updated role:', this.role);
-        console.log('Updated profilePicture:', this.userProfile.profilePicture);
       } else {
-        console.log('No profile found, using fallback values');
         this.userName = 'User';
         this.role = 'Property Owner';
       }
@@ -115,11 +116,44 @@ export class DashboardPage implements OnInit {
   async ngOnInit() {
     await this.loadUserProfile();
     this.loadDashboard();
+    this.loadTenantLeaseDetails();
     this.loadUnreadCount();
     this.loadRecentActivities();
   }
 
+  ionViewWillEnter() {
+    const profile = this.userService.getCurrentUser();
+    if (profile) {
+      this.userName = profile.fullName || this.userName || 'User';
+      this.role = profile.role === 'OWNER' ? 'Property Owner' : 'Tenant';
+      this.isTenant = profile.role === 'TENANT';
+    }
+  }
+
   loadDashboard() {
+    if (this.isTenant) {
+      this.dashboardService.getTenantDashboard().subscribe({
+        next: (res) => {
+          this.tenantDashboard = res;
+          this.monthlyRevenue = `TZS ${Math.round(Number(res.totalOutstanding ?? 0)).toLocaleString()}`;
+          this.pendingMaintenance = Number(res.maintenanceCount ?? 0);
+          this.totalTenants = 0;
+          this.buildTenantReminders(res);
+        },
+        error: async (err: any) => {
+          console.error('Tenant dashboard loading error:', err);
+          const toast = await this.toastController.create({
+            message: err?.error?.message ?? 'Failed to load dashboard.',
+            duration: 4000,
+            position: 'top',
+            color: 'danger'
+          });
+          await toast.present();
+        }
+      });
+      return;
+    }
+
     this.dashboardService.getOwnerDashboard().subscribe({
       next: (res) => {
         this.dashboard = res;
@@ -135,12 +169,9 @@ export class DashboardPage implements OnInit {
 
         // Build reminders from dashboard data
         this.buildReminders(res);
-
-        console.log('Dashboard data loaded:', res);
       },
       error: async (err: any) => {
         console.error('Dashboard loading error:', err);
-        // Set fallback values
         this.monthlyRevenue = 'TZS 0';
         this.pendingMaintenance = 0;
         this.activeContracts = 0;
@@ -158,6 +189,34 @@ export class DashboardPage implements OnInit {
     });
   }
 
+  loadTenantLeaseDetails() {
+    if (!this.isTenant) {
+      return;
+    }
+
+    this.leaseService.getTenantLeases().subscribe({
+      next: (leases) => {
+        this.tenantLeases = leases || [];
+        if ((!this.userName || this.userName === 'User') && this.tenantLeases.length > 0) {
+          const leaseTenantName = this.tenantLeases.find(l => l.tenant?.fullName)?.tenant?.fullName;
+          if (leaseTenantName) {
+            this.userName = leaseTenantName;
+          }
+        }
+        this.activeContracts = this.tenantLeases.length;
+        const propertyIds = this.tenantLeases
+          .map(lease => lease.property?.propertyId || lease.propertyId)
+          .filter((id): id is string => !!id);
+        this.totalProperties = new Set(propertyIds).size;
+      },
+      error: () => {
+        this.tenantLeases = [];
+        this.activeContracts = 0;
+        this.totalProperties = 0;
+      }
+    });
+  }
+
   getProfilePictureUrl(): string {
     return this.userProfileService.getProfilePictureUrl(this.userProfile?.profilePicture);
   }
@@ -167,9 +226,11 @@ export class DashboardPage implements OnInit {
       next: (activities: ActivityItem[]) => {
         // Convert activities to recent activities format
         this.recentActivities = activities.map(a => this.activityToRecentActivity(a));
+        this.showAllRecentActivities = false;
       },
       error: () => {
         this.recentActivities = [];
+        this.showAllRecentActivities = false;
       }
     });
   }
@@ -270,6 +331,58 @@ export class DashboardPage implements OnInit {
     }
 
     this.upcomingReminders = reminders;
+    this.showAllUpcomingReminders = false;
+  }
+
+  private buildTenantReminders(dashboard: TenantDashboardResponse) {
+    const reminders: UpcomingReminder[] = [];
+
+    if (dashboard.overdueCount && Number(dashboard.overdueCount) > 0) {
+      reminders.push({
+        id: 'tenant-overdue',
+        type: 'rent',
+        title: 'Overdue Rent',
+        description: `${dashboard.overdueCount} month(s) are overdue`,
+        date: new Date(),
+        icon: 'alert-circle-outline',
+        iconColor: 'danger'
+      });
+    }
+
+    if (dashboard.nextDueDate) {
+      reminders.push({
+        id: 'tenant-next-due',
+        type: 'rent',
+        title: 'Next Rent Due',
+        description: `Next due date: ${dashboard.nextDueDate}`,
+        date: new Date(dashboard.nextDueDate),
+        icon: 'calendar-outline',
+        iconColor: 'primary'
+      });
+    }
+
+    this.upcomingReminders = reminders;
+    this.showAllUpcomingReminders = false;
+  }
+
+  get visibleRecentActivities(): RecentActivity[] {
+    return this.showAllRecentActivities
+      ? this.recentActivities
+      : this.recentActivities.slice(0, this.listLimit);
+  }
+
+  get visibleUpcomingReminders(): UpcomingReminder[] {
+    return this.showAllUpcomingReminders
+      ? this.upcomingReminders
+      : this.upcomingReminders.slice(0, this.listLimit);
+  }
+
+  get canShowMoreRecentActivities(): boolean {
+    return this.recentActivities.length > this.listLimit;
+  }
+
+  get canShowMoreUpcomingReminders(): boolean {
+    return this.upcomingReminders.length > this.listLimit;
   }
 
   loadUnreadCount() {
@@ -311,8 +424,8 @@ export class DashboardPage implements OnInit {
 
   openSettings() { this.router.navigate(['/settings']); }
   openNotifications() { this.router.navigate(['/notifications']); }
-  openAddProperty() { this.router.navigate(['/tabs/assets']); }
-  openAddTenant() { this.router.navigate(['/tabs/tenants']); }
+  openAddProperty() { this.router.navigate([this.isTenant ? '/tabs/contracts' : '/tabs/assets']); }
+  openAddTenant() { this.router.navigate([this.isTenant ? '/tabs/maintenance' : '/tabs/tenants']); }
   openRecordPayment() { this.router.navigate(['/tabs/rent-tracking']); }
 
   onActivityClick(activity: RecentActivity) {

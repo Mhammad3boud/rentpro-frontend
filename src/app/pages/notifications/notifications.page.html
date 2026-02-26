@@ -27,7 +27,7 @@
 
   <ng-container *ngIf="!isLoading && notifications.length > 0">
     <div class="notif-stack">
-      <ion-card *ngFor="let notif of notifications" [class.read]="notif.isRead" (click)="toggleRead(notif)" role="button" tabindex="0">
+      <ion-card *ngFor="let notif of notifications" [class.read]="notif.isRead" (click)="onNotificationClick(notif)" role="button" tabindex="0">
         <ion-card-header>
           <ion-card-title>
             {{ notif.title }}
