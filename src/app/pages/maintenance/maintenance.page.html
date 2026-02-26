@@ -44,11 +44,7 @@
         (click)="selectedPriority = 'all'; filterTasks()">
         <ion-label>All Priority</ion-label>
       </ion-chip>
-      <ion-chip [color]="selectedPriority === 'critical' ? 'danger' : 'medium'"
-        (click)="selectedPriority = 'critical'; filterTasks()">
-        <ion-label>Critical</ion-label>
-      </ion-chip>
-      <ion-chip [color]="selectedPriority === 'high' ? 'warning' : 'medium'"
+      <ion-chip [color]="selectedPriority === 'high' ? 'danger' : 'medium'"
         (click)="selectedPriority = 'high'; filterTasks()">
         <ion-label>High</ion-label>
       </ion-chip>
@@ -64,7 +60,10 @@
   </div>
 
   <div class="tasks-container">
-    <ion-card *ngFor="let task of filteredTasks; trackBy: trackByTaskId" class="task-card" [class.overdue]="isOverdue(task)">
+    <ion-card *ngFor="let task of filteredTasks; trackBy: trackByTaskId"
+      class="task-card"
+      [class.overdue]="isOverdue(task)"
+      [class.highlighted]="(task.requestId || task.id) === highlightedRequestId">
       <ion-card-header>
         <div class="task-header">
           <div class="task-title-section">
@@ -112,22 +111,22 @@
         </div>
 
         <div class="task-actions">
-          <ion-button size="small" fill="outline" (click)="updateTaskStatus(task)">
+          <ion-button size="small" fill="outline" (click)="updateTaskStatus(task)" *ngIf="!isTenant">
             <ion-icon name="checkmark-outline" slot="start"></ion-icon>
             Update Status
           </ion-button>
 
           <ion-button size="small" fill="clear" color="success" (click)="quickUpdateStatus(task, 'RESOLVED')"
-            *ngIf="task.status !== 'RESOLVED'">
+            *ngIf="!isTenant && task.status !== 'RESOLVED'">
             <ion-icon name="checkmark-done-outline" slot="icon-only"></ion-icon>
           </ion-button>
 
           <ion-button size="small" fill="clear" color="warning" (click)="quickUpdateStatus(task, 'IN_PROGRESS')"
-            *ngIf="task.status === 'PENDING'">
+            *ngIf="!isTenant && task.status === 'PENDING'">
             <ion-icon name="play-outline" slot="icon-only"></ion-icon>
           </ion-button>
 
-          <ion-button size="small" fill="outline" (click)="editTask(task)">
+          <ion-button size="small" fill="outline" (click)="editTask(task)" *ngIf="!isTenant">
             <ion-icon name="create-outline" slot="start"></ion-icon>
             Edit
           </ion-button>
@@ -140,7 +139,7 @@
             <ion-icon name="camera-outline" slot="icon-only"></ion-icon>
           </ion-button>
 
-          <ion-button size="small" fill="clear" color="danger" (click)="deleteTask(task)">
+          <ion-button size="small" fill="clear" color="danger" (click)="deleteTask(task)" *ngIf="!isTenant">
             <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
           </ion-button>
         </div>
@@ -150,10 +149,10 @@
     <div *ngIf="filteredTasks.length === 0" class="empty-state">
       <ion-icon name="build-outline" class="empty-icon"></ion-icon>
       <h3>No Maintenance Tasks</h3>
-      <p>Start by adding your first maintenance task</p>
+      <p>{{ isTenant ? 'Submit your first maintenance request' : 'Start by adding your first maintenance task' }}</p>
       <ion-button fill="outline" (click)="addMaintenanceTask()">
         <ion-icon name="add-outline" slot="start"></ion-icon>
-        Add Task
+        {{ isTenant ? 'Submit Request' : 'Add Task' }}
       </ion-button>
     </div>
   </div>

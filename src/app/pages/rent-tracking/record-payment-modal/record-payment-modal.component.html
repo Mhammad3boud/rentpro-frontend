@@ -58,8 +58,32 @@
 
       <ion-col size="6">
         <ion-item>
-          <ion-label position="stacked">Amount (TZS)</ion-label>
-          <ion-input type="number" [(ngModel)]="payment.amount" placeholder="Enter amount"></ion-input>
+          <ion-label position="stacked">Amount Per Month (TZS)</ion-label>
+          <ion-input type="number" [(ngModel)]="payment.amount" placeholder="Enter monthly amount"></ion-input>
+        </ion-item>
+      </ion-col>
+    </ion-row>
+
+    <ion-row>
+      <ion-col size="6">
+        <ion-item>
+          <ion-label position="stacked">Advance Months</ion-label>
+          <ion-input
+            type="number"
+            min="1"
+            step="1"
+            [(ngModel)]="payment.monthsCovered"
+            (ionBlur)="onMonthsChanged()"
+            placeholder="1">
+          </ion-input>
+        </ion-item>
+      </ion-col>
+      <ion-col size="6">
+        <ion-item>
+          <ion-label position="stacked">Total (Auto)</ion-label>
+          <ion-note style="padding-top: 10px; font-size: 14px;">
+            TZS {{ getTotalAmount() | number:'1.0-0' }}
+          </ion-note>
         </ion-item>
       </ion-col>
     </ion-row>

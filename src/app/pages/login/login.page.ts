@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { AlertController } from '@ionic/angular';
 import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service'; 
+import { SessionWarmupService } from '../../services/session-warmup.service';
 
 @Component({
   selector: 'app-login',
@@ -19,7 +20,8 @@ export class LoginPage implements OnInit {
     private router: Router,
     private alertController: AlertController,
     private authService: AuthService,
-    private userService: UserService
+    private userService: UserService,
+    private sessionWarmupService: SessionWarmupService
   ) {}
 
   ngOnInit() {}
@@ -29,6 +31,7 @@ export class LoginPage implements OnInit {
       next: async () => {
         // Load user profile after successful login
         await this.userService.loadUserProfile();
+        this.sessionWarmupService.warmupAfterLogin();
         this.router.navigate(['/tabs/dashboard']);
       },
       error: async (err: any) => { // ✅ fixes TS7006

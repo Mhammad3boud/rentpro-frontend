@@ -40,6 +40,11 @@ ion-content {
     border-left: 4px solid var(--ion-color-danger);
     background: rgba(var(--ion-color-danger-rgb), 0.05);
   }
+
+  &.highlighted {
+    border: 1px solid rgba(var(--ion-color-primary-rgb), 0.6);
+    box-shadow: 0 0 0 2px rgba(var(--ion-color-primary-rgb), 0.15);
+  }
 }
 
 .task-header {

@@ -126,6 +126,21 @@
     padding: 1.2rem 1.5rem;
     box-shadow: 0 1px 4px var(--ion-shadow-color, rgba(0, 0, 0, 0.06));
 
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .table-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
     h3 {
       font-size: 1.1rem;
       font-weight: 600;
@@ -165,6 +180,16 @@
         padding: 6px 10px;
         font-weight: 600;
         text-transform: capitalize;
+      }
+
+      td .advance-badge {
+        margin-left: 6px;
+      }
+
+      .empty-row {
+        text-align: center;
+        color: var(--ion-color-medium);
+        padding: 1rem 0.8rem;
       }
 
       ion-button {

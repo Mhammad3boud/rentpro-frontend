@@ -11,7 +11,7 @@
   </ion-refresher>
 
   <div class="header-section">
-    <ion-button color="success" shape="round" class="generate-btn" (click)="openGenerateContractModal()">
+    <ion-button *ngIf="!isTenant" color="success" shape="round" class="generate-btn" (click)="openGenerateContractModal()">
       <ion-icon slot="start" name="add-outline"></ion-icon>
       Generate Contract
     </ion-button>
@@ -86,10 +86,10 @@
               <ion-button size="small" fill="outline" color="medium" (click)="downloadPdf(contract)">
                 <ion-icon slot="start" name="download-outline"></ion-icon> PDF
               </ion-button>
-              <ion-button size="small" fill="outline" color="dark" (click)="editContract(contract)">
+              <ion-button *ngIf="!isTenant" size="small" fill="outline" color="dark" (click)="editContract(contract)">
                 <ion-icon slot="start" name="create-outline"></ion-icon> Edit
               </ion-button>
-              <ion-button size="small" fill="outline" color="danger" (click)="confirmDelete(contract)">
+              <ion-button *ngIf="!isTenant" size="small" fill="outline" color="danger" (click)="confirmDelete(contract)">
                 <ion-icon slot="start" name="trash-outline"></ion-icon> Delete
               </ion-button>
             </div>

@@ -57,7 +57,7 @@ export class NotificationsPage implements OnInit {
     if (window.history.length > 1) {
       this.location.back();
     } else {
-      this.router.navigate(['/dashboard']);
+      this.router.navigate(['/tabs/dashboard']);
     }
   }
 
@@ -74,16 +74,31 @@ export class NotificationsPage implements OnInit {
     });
   }
 
-  toggleRead(notif: NotificationItem) {
+  onNotificationClick(notif: NotificationItem) {
+    const openTarget = () => {
+      if (notif.entityType === 'MAINTENANCE_REQUEST' && notif.entityId) {
+        this.router.navigate(['/tabs/maintenance'], { queryParams: { requestId: notif.entityId } });
+        return;
+      }
+
+      if (notif.type === 'MAINTENANCE_UPDATE') {
+        this.router.navigate(['/tabs/maintenance']);
+      }
+    };
+
     if (!notif.isRead) {
       this.notificationsService.markAsRead(notif.id).subscribe({
         next: () => {
           notif.isRead = true;
+          openTarget();
         },
         error: (error) => {
           console.error('Error marking as read:', error);
+          openTarget();
         }
       });
+    } else {
+      openTarget();
     }
   }
 

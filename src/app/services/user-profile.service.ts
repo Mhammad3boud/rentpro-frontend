@@ -36,7 +36,7 @@ export class UserProfileService {
 
   getProfilePictureUrl(path: string | null | undefined): string {
     if (!path) {
-      return 'assets/icon/icon-512x512.png';
+      return 'assets/img/no_avatar.png';
     }
     if (path.startsWith('http')) {
       return path;

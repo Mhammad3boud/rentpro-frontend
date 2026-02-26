@@ -38,12 +38,18 @@ export type { CreateMaintenanceRequest, UpdateMaintenanceStatusRequest };
  * Maps backend MaintenanceRequest to include legacy field names
  */
 function mapToLegacy(r: MaintenanceRequestModel): MaintenanceRequest {
+  const anyReq = r as any;
+  const propertyName =
+    anyReq?.property?.propertyName ||
+    anyReq?.propertyName ||
+    '';
+
   return {
     ...r,
     id: r.requestId,
     createdAt: r.reportedAt,
     updatedAt: r.resolvedAt,
-    propertyName: '' // Would need to be populated from related data
+    propertyName
   } as MaintenanceRequest;
 }
 

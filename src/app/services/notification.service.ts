@@ -14,7 +14,7 @@ export interface NotificationItem {
   title: string;
   message: string;
   entityType?: string;
-  entityId?: number;
+  entityId?: string;
   isRead: boolean;
   createdAt: string;
 }
@@ -38,6 +38,8 @@ export class NotificationsService {
       type: n.type,
       title: n.title || '',
       message: n.message || '',
+      entityType: n.entityType,
+      entityId: n.entityId,
       isRead: n.isRead,
       createdAt: n.createdAt
     };

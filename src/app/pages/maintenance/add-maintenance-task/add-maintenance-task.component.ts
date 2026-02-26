@@ -1,6 +1,7 @@
 import { Component, OnInit, Input } from '@angular/core';
 import { ModalController, ToastController } from '@ionic/angular';
 import { LeaseService } from '../../../services/lease.service';
+import { UserService } from '../../../services/user.service';
 
 interface LeaseOption {
   leaseId: string;
@@ -41,14 +42,19 @@ export class AddMaintenanceTaskComponent implements OnInit {
   isEditMode = false;
   isLoading = false;
   availableLeases: LeaseOption[] = [];
+  attachmentFile?: File;
+  attachmentName = '';
+  isTenant = false;
 
   constructor(
     private modalCtrl: ModalController,
     private toastController: ToastController,
-    private leaseService: LeaseService
+    private leaseService: LeaseService,
+    private userService: UserService
   ) {}
 
   ngOnInit() {
+    this.isTenant = this.userService.isTenant();
     this.loadLeases();
     
     if (this.taskData.leaseId) {
@@ -58,7 +64,11 @@ export class AddMaintenanceTaskComponent implements OnInit {
 
   loadLeases() {
     this.isLoading = true;
-    this.leaseService.getMyLeases().subscribe({
+    const leaseRequest$ = this.isTenant
+      ? this.leaseService.getTenantLeases()
+      : this.leaseService.getMyLeases();
+
+    leaseRequest$.subscribe({
       next: (leases: any[]) => {
         this.availableLeases = leases.map((lease: any) => ({
           leaseId: lease.leaseId,
@@ -93,7 +103,28 @@ export class AddMaintenanceTaskComponent implements OnInit {
       return;
     }
 
-    this.modalCtrl.dismiss(this.taskData);
+    this.modalCtrl.dismiss({
+      ...this.taskData,
+      attachmentFile: this.attachmentFile
+    });
+  }
+
+  onAttachmentSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input?.files?.[0];
+    if (!file) {
+      this.attachmentFile = undefined;
+      this.attachmentName = '';
+      return;
+    }
+
+    this.attachmentFile = file;
+    this.attachmentName = file.name;
+  }
+
+  removeAttachment() {
+    this.attachmentFile = undefined;
+    this.attachmentName = '';
   }
 
   onLeaseChange(leaseId: string) {
