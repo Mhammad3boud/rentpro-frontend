@@ -38,6 +38,11 @@ const routes: Routes = [
           import('../maintenance/maintenance.module').then(m => m.MaintenancePageModule)
       },
       {
+        path: 'analytics',
+        loadChildren: () =>
+          import('../analytics/analytics.module').then(m => m.AnalyticsPageModule)
+      },
+      {
         path: '',
         redirectTo: '/tabs/dashboard',
         pathMatch: 'full'

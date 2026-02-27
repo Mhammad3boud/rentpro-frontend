@@ -1,3 +1,28 @@
+.contracts-page-header {
+  ion-toolbar {
+    --min-height: 56px;
+    --padding-start: 8px;
+    --padding-end: 8px;
+  }
+
+  ion-title {
+    font-weight: 600;
+    padding-inline-start: 8px;
+  }
+
+  ion-buttons {
+    align-items: center;
+  }
+
+  ion-button {
+    --padding-start: 8px;
+    --padding-end: 8px;
+    height: 40px;
+    width: 40px;
+    margin: 0;
+  }
+}
+
 .contracts-page {
   background: var(--ion-background-color);
 
@@ -168,6 +193,8 @@
 
       .card-actions {
         display: flex;
+        flex-wrap: wrap;
+        align-items: center;
         gap: 0.6rem;
         margin-top: 0.8rem;
 
@@ -176,11 +203,48 @@
           --padding-start: 10px;
           --padding-end: 10px;
           font-weight: 500;
+          margin: 0;
+          flex: 0 1 auto;
         }
 
         ion-button[color="medium"][fill="outline"] {
           --border-color: var(--ion-color-primary);
           --color: var(--ion-color-primary);
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  .contracts-page {
+    .header-section {
+      padding: 0.75rem 1rem;
+
+      .generate-btn {
+        width: 100%;
+      }
+    }
+
+    .search-section {
+      margin: 0 1rem 1rem;
+      padding: 0.7rem 0.85rem;
+    }
+
+    ion-grid {
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+
+    ion-card {
+      .card-header {
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      ion-card-content .card-actions {
+        ion-button {
+          flex: 1 1 calc(50% - 0.3rem);
         }
       }
     }

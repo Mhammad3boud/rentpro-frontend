@@ -8,6 +8,40 @@ ion-content {
   border-bottom: 1px solid var(--ion-border-color);
 }
 
+.spend-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+
+  .summary-card {
+    margin: 0;
+    border-radius: 10px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.08);
+
+    ion-card-content {
+      padding: 0.75rem;
+    }
+
+    p {
+      margin: 0 0 0.35rem;
+      font-size: 0.78rem;
+      color: var(--ion-color-medium);
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+  }
+
+  .total h3 { color: var(--ion-color-primary); }
+  .resolved h3 { color: var(--ion-color-success); }
+  .open h3 { color: var(--ion-color-warning); }
+  .filtered h3 { color: var(--ion-color-tertiary); }
+}
+
 .filter-chips {
   display: flex;
   gap: 0.5rem;
@@ -149,6 +183,15 @@ ion-content {
 }
 
 @media (max-width: 768px) {
+  .search-filter-section,
+  .tasks-container {
+    padding: 0.75rem;
+  }
+
+  .spend-summary {
+    grid-template-columns: 1fr;
+  }
+
   .task-header {
     flex-direction: column;
     align-items: stretch;
@@ -159,6 +202,8 @@ ion-content {
   }
 
   .task-actions {
+    gap: 0.4rem;
+
     ion-button {
       flex: 1;
       min-width: auto;

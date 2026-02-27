@@ -17,7 +17,7 @@
 
   <div *ngIf="!isLoading">
     <ion-list>
-      <ion-item>
+      <ion-item *ngIf="isTenant">
         <ion-label position="stacked">Property/Lease *</ion-label>
         <ion-select 
           interface="popover" 
@@ -26,6 +26,43 @@
           placeholder="Select a property">
           <ion-select-option *ngFor="let lease of availableLeases" [value]="lease.leaseId">
             {{ lease.propertyName }}{{ lease.unitNumber ? ' - Unit ' + lease.unitNumber : '' }}
+          </ion-select-option>
+        </ion-select>
+      </ion-item>
+
+      <ion-item *ngIf="!isTenant">
+        <ion-label position="stacked">Linked Lease (Optional)</ion-label>
+        <ion-select
+          interface="popover"
+          [(ngModel)]="taskData.leaseId"
+          (ionChange)="onLeaseChange($event.detail.value)"
+          placeholder="Select linked lease (if any)">
+          <ion-select-option [value]="undefined">No Lease</ion-select-option>
+          <ion-select-option *ngFor="let lease of availableLeases" [value]="lease.leaseId">
+            {{ lease.propertyName }}{{ lease.unitNumber ? ' - Unit ' + lease.unitNumber : '' }}{{ lease.tenantName ? ' (' + lease.tenantName + ')' : '' }}
+          </ion-select-option>
+        </ion-select>
+      </ion-item>
+
+      <ion-item *ngIf="!isTenant">
+        <ion-label position="stacked">Property *</ion-label>
+        <ion-select
+          interface="popover"
+          [(ngModel)]="taskData.propertyId"
+          (ionChange)="onPropertyChange($event.detail.value)"
+          placeholder="Select property">
+          <ion-select-option *ngFor="let property of availableProperties" [value]="property.propertyId">
+            {{ property.propertyName }}
+          </ion-select-option>
+        </ion-select>
+      </ion-item>
+
+      <ion-item *ngIf="!isTenant && availableUnits.length > 0">
+        <ion-label position="stacked">Unit (Optional)</ion-label>
+        <ion-select interface="popover" [(ngModel)]="taskData.unitId" placeholder="Select unit">
+          <ion-select-option [value]="undefined">No Unit</ion-select-option>
+          <ion-select-option *ngFor="let unit of availableUnits" [value]="unit.unitId">
+            Unit {{ unit.unitNumber }}
           </ion-select-option>
         </ion-select>
       </ion-item>
@@ -91,7 +128,7 @@
       <ion-button expand="block" fill="outline" (click)="close()">
         Cancel
       </ion-button>
-      <ion-button expand="block" (click)="saveTask()" [disabled]="!taskData.title || !taskData.leaseId">
+      <ion-button expand="block" (click)="saveTask()" [disabled]="!taskData.title || (isTenant ? !taskData.leaseId : !taskData.propertyId)">
         {{ isEditMode ? 'Update Request' : 'Submit Request' }}
       </ion-button>
     </div>

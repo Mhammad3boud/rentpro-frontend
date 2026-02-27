@@ -54,11 +54,13 @@
             <p *ngIf="unit.currentTenantName && !unit.isAvailable">Tenant: {{ unit.currentTenantName }}</p>
             <p *ngIf="unit.leaseEndDate">Lease ends: {{ unit.leaseEndDate | date:'mediumDate' }}</p>
           </ion-label>
-          <ion-chip slot="end" [color]="getUnitStatusColor(unit)">
-            <ion-icon [name]="unit.isAvailable ? (unit.leaseStatus === 'EXPIRED' ? 'time-outline' : 'checkmark-circle') : 'close-circle'"></ion-icon>
-            {{ getUnitStatusLabel(unit) }}
-          </ion-chip>
-          <ion-radio slot="end" [checked]="selectedUnit === unit" [disabled]="!unit.isAvailable"></ion-radio>
+          <div slot="end" class="unit-end-controls">
+            <ion-chip class="unit-status-chip" [color]="getUnitStatusColor(unit)">
+              <ion-icon [name]="unit.isAvailable ? (unit.leaseStatus === 'EXPIRED' ? 'time-outline' : 'checkmark-circle') : 'close-circle'"></ion-icon>
+              <ion-label>{{ getUnitStatusLabel(unit) }}</ion-label>
+            </ion-chip>
+            <ion-radio [checked]="selectedUnit === unit" [disabled]="!unit.isAvailable"></ion-radio>
+          </div>
         </ion-item>
       </ion-list>
       
@@ -92,14 +94,14 @@
         </ion-row>
 
         <ion-row>
-          <ion-col size="6">
+          <ion-col size="12" size-md="6">
             <ion-item>
               <ion-label position="stacked">Email *</ion-label>
               <ion-input type="email" [(ngModel)]="tenant.email" placeholder="Enter email address"></ion-input>
             </ion-item>
           </ion-col>
 
-          <ion-col size="6">
+          <ion-col size="12" size-md="6">
             <ion-item>
               <ion-label position="stacked">Phone Number *</ion-label>
               <ion-input [(ngModel)]="tenant.phoneNumber" placeholder="Enter phone number"></ion-input>
@@ -121,14 +123,14 @@
         </ion-row>
 
         <ion-row>
-          <ion-col size="6">
+          <ion-col size="12" size-md="6">
             <ion-item>
               <ion-label position="stacked">Emergency Contact Name</ion-label>
               <ion-input [(ngModel)]="tenant.emergencyName" placeholder="Emergency contact name"></ion-input>
             </ion-item>
           </ion-col>
 
-          <ion-col size="6">
+          <ion-col size="12" size-md="6">
             <ion-item>
               <ion-label position="stacked">Emergency Contact Phone</ion-label>
               <ion-input [(ngModel)]="tenant.emergencyPhone" placeholder="Emergency contact phone"></ion-input>
@@ -156,14 +158,14 @@
     <ion-card-content>
       <ion-grid>
         <ion-row>
-          <ion-col size="6">
+          <ion-col size="12" size-md="6">
             <ion-item>
               <ion-label position="stacked">Monthly Rent ($) *</ion-label>
               <ion-input type="number" [(ngModel)]="tenant.monthlyRent" placeholder="Enter monthly rent"></ion-input>
             </ion-item>
           </ion-col>
 
-          <ion-col size="6">
+          <ion-col size="12" size-md="6">
             <ion-item>
               <ion-label position="stacked">Lease Start Date *</ion-label>
               <ion-input type="date" [(ngModel)]="tenant.leaseStart"></ion-input>
@@ -172,14 +174,14 @@
         </ion-row>
 
         <ion-row>
-          <ion-col size="6">
+          <ion-col size="12" size-md="6">
             <ion-item>
               <ion-label position="stacked">Lease End Date *</ion-label>
               <ion-input type="date" [(ngModel)]="tenant.leaseEnd"></ion-input>
             </ion-item>
           </ion-col>
 
-          <ion-col size="6">
+          <ion-col size="12" size-md="6">
             <ion-item>
               <ion-label position="stacked">Renewal Reminder Date</ion-label>
               <ion-input type="date" [(ngModel)]="tenant.renewalReminder"></ion-input>

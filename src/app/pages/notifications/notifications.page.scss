@@ -64,3 +64,16 @@ ion-card[role="button"]:hover {
     font-size: 1.1rem;
   }
 }
+
+@media (max-width: 767px) {
+  .notif-stack {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .empty-state,
+  .loading-state {
+    height: 60vh;
+    padding: 1rem;
+  }
+}

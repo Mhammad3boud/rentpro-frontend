@@ -1,0 +1,59 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>{{ title }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismiss()">Close</ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <ion-item lines="none">
+    <ion-label position="stacked">{{ mode === 'check-in' ? 'Check-In Date' : 'Check-Out Date' }}</ion-label>
+    <ion-input type="date" [(ngModel)]="actionDate"></ion-input>
+  </ion-item>
+
+  <ion-item lines="none" *ngIf="mode === 'check-out'">
+    <ion-label position="stacked">Reason</ion-label>
+    <ion-input [(ngModel)]="reason" placeholder="Reason (required)"></ion-input>
+  </ion-item>
+
+  <ion-item lines="none">
+    <ion-label position="stacked">Notes</ion-label>
+    <ion-textarea [(ngModel)]="notes" autoGrow="true" placeholder="General notes (optional)"></ion-textarea>
+  </ion-item>
+
+  <div class="section-title">Checklist</div>
+
+  <div class="item-card" *ngFor="let item of checklist; let i = index">
+    <ion-item lines="none">
+      <ion-label position="stacked">Item</ion-label>
+      <ion-input [(ngModel)]="item.item" placeholder="e.g. Walls"></ion-input>
+    </ion-item>
+    <ion-item lines="none">
+      <ion-label position="stacked">Condition</ion-label>
+      <ion-select [(ngModel)]="item.condition" interface="popover">
+        <ion-select-option *ngFor="let c of conditionOptions" [value]="c.value">{{ c.label }}</ion-select-option>
+      </ion-select>
+    </ion-item>
+    <ion-item lines="none">
+      <ion-label>Tick</ion-label>
+      <ion-checkbox slot="end" [(ngModel)]="item.checked"></ion-checkbox>
+    </ion-item>
+    <ion-item lines="none">
+      <ion-label position="stacked">Item Notes</ion-label>
+      <ion-input [(ngModel)]="item.notes" placeholder="e.g. Needs painting"></ion-input>
+    </ion-item>
+    <ion-button fill="clear" color="danger" size="small" (click)="removeItem(i)">Remove Item</ion-button>
+  </div>
+
+  <ion-button expand="block" fill="outline" (click)="addItem()">Add Checklist Item</ion-button>
+  <ion-button
+    expand="block"
+    color="primary"
+    (click)="save()"
+    [disabled]="mode === 'check-out' && !reason.trim()"
+  >
+    Save
+  </ion-button>
+</ion-content>

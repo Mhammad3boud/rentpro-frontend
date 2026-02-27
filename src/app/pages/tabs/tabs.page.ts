@@ -57,6 +57,11 @@ export class TabsPage implements OnInit, OnDestroy {
       icon: 'build-outline',
       label: 'Maintenance',
       path: '/tabs/maintenance'
+    },
+    {
+      icon: 'analytics-outline',
+      label: 'Analytics',
+      path: '/tabs/analytics'
     }
   ];
   private tenantSidebarItems: SidebarItem[] = [

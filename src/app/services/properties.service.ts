@@ -6,8 +6,6 @@ import {
     Property,
     PropertyWithUnits,
     CreatePropertyRequest,
-    PropertyType,
-    UsageType,
     Unit
 } from '../models';
 
@@ -24,6 +22,7 @@ export interface PropertyDto {
     propertyId?: string;
     propertyName?: string;
     propertyType?: string;
+    assetCategory?: string;
     usageType?: string;
     region?: string;
     postcode?: string;
@@ -88,9 +87,9 @@ export class PropertiesService {
         return this.http.put<Property>(`${this.baseUrl}/properties/${id}`, body);
     }
 
-    generateLeaseNames(propertyTitle: string, propertyType: string, units?: string[]): UnitInfo[] {
-        // Non-residential properties might not need leases
-        if (['FARM', 'LAND', 'WAREHOUSE', 'OFFICE', 'INDUSTRIAL'].includes(propertyType)) {
+    generateLeaseNames(propertyTitle: string, propertyType: string, units?: string[], assetCategory?: string): UnitInfo[] {
+        // Non-residential categories usually use agreement naming.
+        if (['FARM', 'LAND', 'WAREHOUSE', 'OFFICE', 'SHOP'].includes((assetCategory || '').toUpperCase())) {
             return [{
                 unitName: propertyTitle,
                 leaseName: `${propertyTitle} Agreement`

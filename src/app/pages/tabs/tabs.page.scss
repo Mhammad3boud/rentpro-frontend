@@ -180,6 +180,7 @@
 .main-content {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   min-height: 100vh;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   
   &.desktop {
     margin-left: 280px;
@@ -244,6 +245,10 @@
   
   .sidebar-nav .nav-item {
     padding: 0.875rem 1.25rem;
+  }
+
+  .swipe-area {
+    width: 14px;
   }
 }
 

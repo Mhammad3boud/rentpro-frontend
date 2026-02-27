@@ -1,7 +1,26 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Lease, LeaseWithDetails, CreateLeaseRequest, LeaseStatus } from '../models';
+import { Lease, LeaseChecklistItem, LeaseWithDetails, CreateLeaseRequest, LeaseStatus } from '../models';
+
+export interface TerminateLeaseRequest {
+  reason: string;
+  notes?: string;
+  terminationDate?: string;
+}
+
+export interface CheckInLeaseRequest {
+  checkInDate?: string;
+  notes?: string;
+  checklist?: LeaseChecklistItem[];
+}
+
+export interface CheckOutLeaseRequest {
+  checkOutDate?: string;
+  reason: string;
+  notes?: string;
+  checklist?: LeaseChecklistItem[];
+}
 
 @Injectable({
   providedIn: 'root'
@@ -52,8 +71,16 @@ export class LeaseService {
   }
 
   // Terminate lease
-  terminateLease(leaseId: string): Observable<Lease> {
-    return this.http.put<Lease>(`${this.baseUrl}/api/leases/${leaseId}/terminate`, {});
+  terminateLease(leaseId: string, payload: TerminateLeaseRequest): Observable<Lease> {
+    return this.http.put<Lease>(`${this.baseUrl}/api/leases/${leaseId}/terminate`, payload);
+  }
+
+  checkInLease(leaseId: string, payload: CheckInLeaseRequest): Observable<Lease> {
+    return this.http.put<Lease>(`${this.baseUrl}/api/leases/${leaseId}/check-in`, payload);
+  }
+
+  checkOutLease(leaseId: string, payload: CheckOutLeaseRequest): Observable<Lease> {
+    return this.http.put<Lease>(`${this.baseUrl}/api/leases/${leaseId}/check-out`, payload);
   }
 
   // Delete lease permanently

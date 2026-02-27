@@ -110,61 +110,62 @@ export class RentSimpleService {
   }
 
   private async fetchLeasePayments(leaseId: string): Promise<any[]> {
-    // Preferred endpoint: returns flat payment rows
+    // Primary endpoint: available in current backend and may return
+    // either RentPayment[] or LeasePaymentStatus.
     try {
+      const response = await this.http
+        .get(`${this.baseUrl}/payments/leases/${leaseId}`)
+        .toPromise();
+
+      if (Array.isArray(response)) {
+        return response as any[];
+      }
+
+      const months = (response as any)?.months;
+      if (!Array.isArray(months)) {
+        return [];
+      }
+
+      const flattened: any[] = [];
+      months.forEach((month: any) => {
+        if (Array.isArray(month?.payments) && month.payments.length > 0) {
+          month.payments.forEach((p: any) => {
+            flattened.push({
+              paymentId: p.paymentId || `${leaseId}-${month.month}`,
+              monthYear: p.monthYear || month.month,
+              dueDate: p.dueDate || month.dueDate,
+              amountExpected: p.amountExpected ?? month.amount ?? 0,
+              amountPaid: p.amountPaid ?? month.paidAmount ?? 0,
+              paymentStatus: p.paymentStatus || month.status || 'PENDING',
+              paidDate: p.paidDate,
+              paymentMethod: p.paymentMethod
+            });
+          });
+          return;
+        }
+
+        flattened.push({
+          paymentId: `${leaseId}-${month.month}`,
+          monthYear: month.month,
+          dueDate: month.dueDate,
+          amountExpected: month.amount ?? 0,
+          amountPaid: month.paidAmount ?? 0,
+          paymentStatus: month.status || 'PENDING'
+        });
+      });
+
+      return flattened;
+    } catch (error) {
+      // Backwards fallback for environments exposing /all
       const allResponse = await this.http
         .get(`${this.baseUrl}/payments/leases/${leaseId}/all`)
         .toPromise();
       if (Array.isArray(allResponse)) {
         return allResponse as any[];
       }
-    } catch (error) {
-      console.warn(`Fallback to lease payment status endpoint for lease ${leaseId}`, error);
-    }
-
-    // Fallback endpoint: can return either RentPayment[] or LeasePaymentStatus
-    const response = await this.http
-      .get(`${this.baseUrl}/payments/leases/${leaseId}`)
-      .toPromise();
-
-    if (Array.isArray(response)) {
-      return response as any[];
-    }
-
-    const months = (response as any)?.months;
-    if (!Array.isArray(months)) {
+      console.warn(`Could not load payments for lease ${leaseId}`, error);
       return [];
     }
-
-    const flattened: any[] = [];
-    months.forEach((month: any) => {
-      if (Array.isArray(month?.payments) && month.payments.length > 0) {
-        month.payments.forEach((p: any) => {
-          flattened.push({
-            paymentId: p.paymentId || `${leaseId}-${month.month}`,
-            monthYear: p.monthYear || month.month,
-            dueDate: p.dueDate || month.dueDate,
-            amountExpected: p.amountExpected ?? month.amount ?? 0,
-            amountPaid: p.amountPaid ?? month.paidAmount ?? 0,
-            paymentStatus: p.paymentStatus || month.status || 'PENDING',
-            paidDate: p.paidDate,
-            paymentMethod: p.paymentMethod
-          });
-        });
-        return;
-      }
-
-      flattened.push({
-        paymentId: `${leaseId}-${month.month}`,
-        monthYear: month.month,
-        dueDate: month.dueDate,
-        amountExpected: month.amount ?? 0,
-        amountPaid: month.paidAmount ?? 0,
-        paymentStatus: month.status || 'PENDING'
-      });
-    });
-
-    return flattened;
   }
 
   async createPayment(paymentData: CreatePaymentRequest) {
@@ -233,6 +234,34 @@ export class RentSimpleService {
     } catch (error) {
       console.error('Error fetching active leases:', error);
       throw error;
+    }
+  }
+
+  async markPaymentUnpaid(paymentId: string) {
+    try {
+      return await this.http.patch(`${this.baseUrl}/payments/${paymentId}/unpaid`, {}).toPromise();
+    } catch (error: any) {
+      console.error('Error marking payment as unpaid:', error);
+      if (error.status === 403) {
+        throw new Error('You do not have permission to update this payment.');
+      } else if (error.status === 404) {
+        throw new Error('Payment record not found.');
+      }
+      throw new Error('Failed to mark payment as unpaid.');
+    }
+  }
+
+  async deletePayment(paymentId: string) {
+    try {
+      await this.http.delete(`${this.baseUrl}/payments/${paymentId}`).toPromise();
+    } catch (error: any) {
+      console.error('Error deleting payment:', error);
+      if (error.status === 403) {
+        throw new Error('You do not have permission to delete this payment.');
+      } else if (error.status === 404) {
+        throw new Error('Payment record not found.');
+      }
+      throw new Error('Failed to delete payment.');
     }
   }
 

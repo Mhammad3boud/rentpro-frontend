@@ -172,3 +172,23 @@ ion-toggle {
     }
   }
 }
+
+@media (max-width: 767px) {
+  .profile-section {
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
+
+    .profile-picture {
+      width: 88px;
+      height: 88px;
+    }
+
+    h2 {
+      font-size: 1.2rem;
+    }
+  }
+
+  ion-card {
+    margin: 0.65rem 0.75rem;
+  }
+}

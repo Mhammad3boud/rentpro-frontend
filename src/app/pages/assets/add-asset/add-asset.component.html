@@ -25,16 +25,24 @@
           </ion-col>
           <ion-col size="12" size-md="6">
             <ion-item>
-              <ion-label position="stacked">Property Type *</ion-label>
+              <ion-label position="stacked">Structure Type *</ion-label>
               <ion-select interface="popover" [(ngModel)]="asset.propertyType" (ionChange)="onPropertyTypeChange()">
                 <ion-select-option value="STANDALONE">Standalone Property</ion-select-option>
                 <ion-select-option value="MULTI_UNIT">Multi-Unit Property</ion-select-option>
-                <ion-select-option value="FARM">Farm</ion-select-option>
+              </ion-select>
+            </ion-item>
+          </ion-col>
+          <ion-col size="12" size-md="6">
+            <ion-item>
+              <ion-label position="stacked">Asset Category *</ion-label>
+              <ion-select interface="popover" [(ngModel)]="asset.assetCategory" (ionChange)="onAssetCategoryChange()">
+                <ion-select-option value="HOUSE">House</ion-select-option>
+                <ion-select-option value="APARTMENT">Apartment</ion-select-option>
                 <ion-select-option value="LAND">Land</ion-select-option>
+                <ion-select-option value="FARM">Farm</ion-select-option>
+                <ion-select-option value="SHOP">Shop</ion-select-option>
+                <ion-select-option value="OFFICE">Office</ion-select-option>
                 <ion-select-option value="WAREHOUSE">Warehouse</ion-select-option>
-                <ion-select-option value="OFFICE">Office Building</ion-select-option>
-                <ion-select-option value="COMMERCIAL">Commercial Property</ion-select-option>
-                <ion-select-option value="INDUSTRIAL">Industrial Property</ion-select-option>
                 <ion-select-option value="OTHER">Other</ion-select-option>
               </ion-select>
             </ion-item>
@@ -46,8 +54,6 @@
                 <ion-select-option value="RESIDENTIAL">Residential</ion-select-option>
                 <ion-select-option value="COMMERCIAL">Commercial</ion-select-option>
                 <ion-select-option value="MIXED">Mixed Use</ion-select-option>
-                <ion-select-option value="AGRICULTURAL">Agricultural</ion-select-option>
-                <ion-select-option value="INDUSTRIAL">Industrial</ion-select-option>
               </ion-select>
             </ion-item>
           </ion-col>
@@ -155,7 +161,7 @@
     </ion-card-header>
     <ion-card-content>
       <div class="units-container">
-        <div class="unit-item" *ngFor="let unit of asset.units; let i = index">
+        <div class="unit-item" *ngFor="let unit of asset.units; let i = index; trackBy: trackByIndex">
           <ion-item>
             <ion-label position="stacked">Unit {{ i + 1 }}</ion-label>
             <ion-input placeholder="e.g., A1, 2B, Ground Floor" [(ngModel)]="asset.units[i]"></ion-input>

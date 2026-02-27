@@ -1,21 +1,28 @@
 <ion-header>
   <ion-toolbar>
-    <ion-title>Contract Generation</ion-title>
+    <ion-title>Contracts</ion-title>
+    <ion-buttons slot="end">
+      <ion-button *ngIf="!isTenant" (click)="openGenerateContractModal()">
+        <ion-icon name="add-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content class="contracts-page">
-
-  <ion-refresher slot="fixed" pullMax="100" pullMin="60 " (ionRefresh)="doRefresh($event)">
-    <ion-refresher-content pullingIcon="refresh" refreshingSpinner="dots"></ion-refresher-content>
+  <ion-refresher
+    slot="fixed"
+    pullMax="100"
+    pullMin="60 "
+    (ionRefresh)="doRefresh($event)"
+  >
+    <ion-refresher-content
+      pullingIcon="refresh"
+      refreshingSpinner="dots"
+    ></ion-refresher-content>
   </ion-refresher>
 
-  <div class="header-section">
-    <ion-button *ngIf="!isTenant" color="success" shape="round" class="generate-btn" (click)="openGenerateContractModal()">
-      <ion-icon slot="start" name="add-outline"></ion-icon>
-      Generate Contract
-    </ion-button>
-  </div>
+  <div class="header-section"></div>
 
   <div class="search-section">
     <ion-icon name="search-outline"></ion-icon>
@@ -26,6 +33,14 @@
       (input)="filterContracts()"
     />
   </div>
+
+  <ion-item lines="none" *ngIf="isTenant && !tenantHasActiveContract">
+    <ion-icon name="information-circle-outline" color="medium" slot="start"></ion-icon>
+    <ion-label>
+      <h3>History Only</h3>
+      <p>Your active lease is not available. Terminated/expired contracts are shown as read-only records.</p>
+    </ion-label>
+  </ion-item>
 
   <!-- Loading State -->
   <div *ngIf="isLoading" class="loading-container">
@@ -42,7 +57,11 @@
 
   <ion-grid *ngIf="!isLoading && filteredContracts.length > 0">
     <ion-row>
-      <ion-col size="12" size-md="4" *ngFor="let contract of filteredContracts; trackBy: trackByContract">
+      <ion-col
+        size="12"
+        size-md="4"
+        *ngFor="let contract of filteredContracts; trackBy: trackByContract"
+      >
         <ion-card>
           <ion-card-header>
             <div class="card-header">
@@ -54,7 +73,7 @@
                 </div>
               </div>
               <ion-badge
-                [color]="contract.status === 'Active' ? 'success' : (contract.status === 'Expired' ? 'danger' : 'warning')"
+                [color]="getStatusColor(contract.status)"
                 class="status-badge"
               >
                 {{ contract.status }}
@@ -78,18 +97,77 @@
 
             <hr />
 
-            <p><strong>Monthly Rent:</strong> TZS {{ contract.rent | number }}</p>
-            <p><strong>Security Deposit:</strong> TZS {{ contract.deposit | number }}</p>
+            <p>
+              <strong>Monthly Rent:</strong> TZS {{ contract.rent | number }}
+            </p>
+            <p>
+              <strong>Security Deposit:</strong> TZS {{ contract.deposit |
+              number }}
+            </p>
             <p><strong>Generated:</strong> {{ contract.generated }}</p>
+            <p *ngIf="contract.checkInDate"><strong>Check-In:</strong> {{ contract.checkInDate }}</p>
+            <p *ngIf="contract.checkOutDate"><strong>Check-Out:</strong> {{ contract.checkOutDate }}</p>
+            <div *ngIf="contract.checkInChecklist?.length">
+              <p><strong>Check-In Checklist:</strong></p>
+              <p *ngFor="let c of contract.checkInChecklist">- {{ c.item }} ({{ c.condition || 'GOOD' }}) <span *ngIf="c.notes">- {{ c.notes }}</span></p>
+            </div>
+            <div *ngIf="contract.checkOutChecklist?.length">
+              <p><strong>Check-Out Checklist:</strong></p>
+              <p *ngFor="let c of contract.checkOutChecklist">- {{ c.item }} ({{ c.condition || 'GOOD' }}) <span *ngIf="c.notes">- {{ c.notes }}</span></p>
+            </div>
 
             <div class="card-actions">
-              <ion-button size="small" fill="outline" color="medium" (click)="downloadPdf(contract)">
+              <ion-button
+                size="small"
+                fill="outline"
+                color="medium"
+                (click)="downloadPdf(contract)"
+              >
                 <ion-icon slot="start" name="download-outline"></ion-icon> PDF
               </ion-button>
-              <ion-button *ngIf="!isTenant" size="small" fill="outline" color="dark" (click)="editContract(contract)">
+              <ion-button
+                *ngIf="!isTenant"
+                size="small"
+                fill="outline"
+                color="dark"
+                (click)="editContract(contract)"
+              >
                 <ion-icon slot="start" name="create-outline"></ion-icon> Edit
               </ion-button>
-              <ion-button *ngIf="!isTenant" size="small" fill="outline" color="danger" (click)="confirmDelete(contract)">
+              <ion-button
+                *ngIf="!isTenant && canCheckIn(contract)"
+                size="small"
+                fill="outline"
+                color="success"
+                (click)="confirmCheckIn(contract)"
+              >
+                <ion-icon slot="start" name="log-in-outline"></ion-icon> Check In
+              </ion-button>
+              <ion-button
+                *ngIf="!isTenant && canCheckOut(contract)"
+                size="small"
+                fill="outline"
+                color="warning"
+                (click)="confirmCheckOut(contract)"
+              >
+                <ion-icon slot="start" name="log-out-outline"></ion-icon> Check Out
+              </ion-button>
+              <ion-button
+                *ngIf="!isTenant && canTerminate(contract)"
+                size="small"
+                fill="outline"
+                color="warning"
+                (click)="confirmTerminate(contract)"
+              >
+                <ion-icon slot="start" name="close-circle-outline"></ion-icon> Terminate
+              </ion-button>
+              <ion-button
+                *ngIf="!isTenant"
+                size="small"
+                fill="outline"
+                color="danger"
+                (click)="confirmDelete(contract)"
+              >
                 <ion-icon slot="start" name="trash-outline"></ion-icon> Delete
               </ion-button>
             </div>
@@ -98,5 +176,4 @@
       </ion-col>
     </ion-row>
   </ion-grid>
-
 </ion-content>

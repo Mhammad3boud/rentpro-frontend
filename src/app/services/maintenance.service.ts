@@ -31,6 +31,18 @@ export interface MaintenanceRequest extends MaintenanceRequestModel {
   photos?: MaintenancePhoto[];
 }
 
+export interface UpdateMaintenanceRequestPayload {
+  leaseId?: string;
+  propertyId?: string;
+  unitId?: string;
+  title?: string;
+  description?: string;
+  priority?: MaintenancePriority;
+  assignedTechnician?: string;
+  maintenanceCost?: number;
+  status?: MaintenanceStatus;
+}
+
 // Re-export for backwards compatibility
 export type { CreateMaintenanceRequest, UpdateMaintenanceStatusRequest };
 
@@ -85,6 +97,13 @@ export class MaintenanceService {
   // Update maintenance request status
   updateRequestStatus(requestId: string, request: UpdateMaintenanceStatusRequest): Observable<MaintenanceRequest> {
     return this.http.put<MaintenanceRequestModel>(`${this.baseUrl}/maintenance/requests/${requestId}/status`, request).pipe(
+      map(mapToLegacy)
+    );
+  }
+
+  // Update full maintenance request details
+  updateRequest(requestId: string, request: UpdateMaintenanceRequestPayload): Observable<MaintenanceRequest> {
+    return this.http.put<MaintenanceRequestModel>(`${this.baseUrl}/maintenance/requests/${requestId}`, request).pipe(
       map(mapToLegacy)
     );
   }

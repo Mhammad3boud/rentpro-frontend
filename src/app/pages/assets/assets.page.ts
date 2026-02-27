@@ -1,4 +1,6 @@
 import { Component, OnInit } from '@angular/core';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 import { ModalController, AlertController, ToastController } from '@ionic/angular';
 
@@ -13,6 +15,7 @@ import { AssetDetailsComponent } from './assets-details/asset-details.component'
 
 
 import { PropertiesService, PropertyDto, PropertyWithUnits } from '../../services/properties.service';
+import { LeaseService } from '../../services/lease.service';
 
 import { UserService } from '../../services/user.service';
 
@@ -35,6 +38,7 @@ interface Asset {
   usage: string;
 
   block: string;
+  status: 'ACTIVE' | 'INACTIVE';
 
 }
 
@@ -85,6 +89,7 @@ export class AssetsPage implements OnInit {
     private toastController: ToastController,
 
     private propertiesService: PropertiesService,
+    private leaseService: LeaseService,
 
     private userService: UserService
 
@@ -104,16 +109,20 @@ export class AssetsPage implements OnInit {
 
   private loadAssets() {
 
-    this.propertiesService.list().subscribe({
+    forkJoin({
+      rows: this.propertiesService.list(),
+      leases: this.leaseService.getMyLeases().pipe(catchError(() => of([] as any[])))
+    }).subscribe({
 
-      next: (rows) => {
+      next: ({ rows, leases }) => {
+        const leaseStateByProperty = this.buildLeaseStateMap(leases || []);
 
         // Convert PropertyWithUnits to PropertyDto with both field name formats
         const dtos = rows.map(r => this.mapToPropertyDto(r));
         // Use string keys for consistent ID mapping
         this.propertyById = new Map(dtos.map(r => [String(r.id), r]));
 
-        this.assets = dtos.map((p) => this.mapPropertyToAsset(p));
+        this.assets = dtos.map((p) => this.mapPropertyToAsset(p, leaseStateByProperty));
 
         this.filterAssets();
 
@@ -136,6 +145,7 @@ export class AssetsPage implements OnInit {
       propertyId: p.propertyId,
       propertyName: p.propertyName,
       propertyType: p.propertyType,
+      assetCategory: (p as any).assetCategory,
       usageType: p.usageType,
       region: p.region,
       postcode: p.postcode,
@@ -154,7 +164,7 @@ export class AssetsPage implements OnInit {
       structureType: p.propertyType as 'STANDALONE' | 'MULTI_UNIT',
       notes: undefined,
       meta: {
-        propertyType: p.propertyType,
+        propertyType: (p as any).assetCategory || p.propertyType,
         propertyUsage: p.usageType,
         region: p.region,
         postcode: p.postcode,
@@ -169,43 +179,25 @@ export class AssetsPage implements OnInit {
 
   // ---------------- mapping: backend dto -> card ----------------
 
-private mapPropertyToAsset(p: PropertyDto): Asset {
+private mapPropertyToAsset(
+  p: PropertyDto,
+  leaseStateByProperty: Map<string, { hasAnyLease: boolean; hasActiveLease: boolean }>
+): Asset {
 
   const m = (p.meta ?? {}) as Record<string, any>;
 
-
-
-  // Determine property type display name
-
-  let propertyType = 'Property';
-
-  if (p.structureType === 'MULTI_UNIT') {
-
-    propertyType = 'Multi-Unit Property';
-
-  } else if ((p.meta as any)?.['propertyType']) {
-
-    const typeMap: Record<string, string> = {
-
-      'FARM': 'Farm',
-
-      'LAND': 'Land',
-
-      'WAREHOUSE': 'Warehouse',
-
-      'OFFICE': 'Office Building',
-
-      'COMMERCIAL': 'Commercial Property',
-
-      'INDUSTRIAL': 'Industrial Property',
-
-      'OTHER': 'Other Property'
-
-    };
-
-    propertyType = typeMap[(p.meta as any)['propertyType']] || 'Property';
-
-  }
+  const assetCategory = (p as any).assetCategory || (p.meta as any)?.['propertyType'];
+  const typeMap: Record<string, string> = {
+    'HOUSE': 'House',
+    'APARTMENT': 'Apartment',
+    'FARM': 'Farm',
+    'LAND': 'Land',
+    'WAREHOUSE': 'Warehouse',
+    'OFFICE': 'Office',
+    'SHOP': 'Shop',
+    'OTHER': 'Other Property'
+  };
+  const propertyType = typeMap[assetCategory] || (p.structureType === 'MULTI_UNIT' ? 'Apartment' : 'House');
 
 
 
@@ -223,9 +215,11 @@ private mapPropertyToAsset(p: PropertyDto): Asset {
 
     phone: (m['ownerPhone'] ?? this.userService.getCurrentUserPhone()).toString(),
 
-    usage: m['propertyUsage'] || 'RESIDENTIAL',
+    usage: (p.usageType || m['propertyUsage'] || 'RESIDENTIAL').toString(),
 
     block: `${m['region'] || ''} ${m['postcode'] || ''}`.trim() || '-',
+
+    status: this.resolveAssetStatus(String(p.id), leaseStateByProperty),
 
   };
 
@@ -332,8 +326,9 @@ private mapPropertyToAsset(p: PropertyDto): Asset {
           title: dto.title || '',
 
           propertyType: dto.structureType || 'STANDALONE',
+          assetCategory: (dto as any).assetCategory || (dto.meta as any)?.['propertyType'] || 'HOUSE',
 
-          propertyUsage: (dto.meta as any)?.['propertyUsage'] || 'RESIDENTIAL',
+          propertyUsage: dto.usageType || (dto.meta as any)?.['propertyUsage'] || 'RESIDENTIAL',
 
           address: dto.address || '',
 
@@ -536,29 +531,33 @@ private mapPropertyToAsset(p: PropertyDto): Asset {
     this.propertiesService.list().subscribe({
 
       next: (rows) => {
+        this.leaseService.getMyLeases().pipe(catchError(() => of([] as any[]))).subscribe({
+          next: (leases) => {
+            const leaseStateByProperty = this.buildLeaseStateMap(leases || []);
 
-        // Convert PropertyWithUnits to PropertyDto with both field name formats
-        const dtos = rows.map(r => this.mapToPropertyDto(r));
-        // Use string keys for consistent ID mapping
-        this.propertyById = new Map(dtos.map(r => [String(r.id), r]));
+            // Convert PropertyWithUnits to PropertyDto with both field name formats
+            const dtos = rows.map(r => this.mapToPropertyDto(r));
+            // Use string keys for consistent ID mapping
+            this.propertyById = new Map(dtos.map(r => [String(r.id), r]));
 
-        this.assets = dtos.map((p) => this.mapPropertyToAsset(p));
+            this.assets = dtos.map((p) => this.mapPropertyToAsset(p, leaseStateByProperty));
 
-        this.filterAssets();
+            this.filterAssets();
 
-        console.log('Refreshed properties:', rows.length);
+            console.log('Refreshed properties:', rows.length);
 
-        event.target.complete();
-
+            event.target.complete();
+          },
+          error: () => {
+            this.presentToast('Refresh failed', 'danger');
+            event.target.complete();
+          }
+        });
       },
-
       error: () => {
-
         this.presentToast('Refresh failed', 'danger');
-
         event.target.complete();
-
-      },
+      }
 
     });
 
@@ -618,9 +617,8 @@ private mapPropertyToAsset(p: PropertyDto): Asset {
 
     const iconMap: Record<string, string> = {
 
-      'Standalone Property': 'home-outline',
-
-      'Multi-Unit Property': 'business-outline',
+      'House': 'home-outline',
+      'Apartment': 'business-outline',
 
       'Farm': 'leaf-outline',
 
@@ -628,11 +626,8 @@ private mapPropertyToAsset(p: PropertyDto): Asset {
 
       'Warehouse': 'archive-outline',
 
-      'Office Building': 'business-outline',
-
-      'Commercial Property': 'storefront-outline',
-
-      'Industrial Property': 'factory-outline',
+      'Office': 'business-outline',
+      'Shop': 'storefront-outline',
 
       'Other Property': 'cube-outline'
 
@@ -640,6 +635,44 @@ private mapPropertyToAsset(p: PropertyDto): Asset {
 
     return iconMap[propertyType] || 'home-outline';
 
+  }
+
+  getAssetStatusColor(status: string): string {
+    return status === 'ACTIVE' ? 'success' : 'medium';
+  }
+
+  private resolveAssetStatus(
+    propertyId: string,
+    leaseStateByProperty: Map<string, { hasAnyLease: boolean; hasActiveLease: boolean }>
+  ): 'ACTIVE' | 'INACTIVE' {
+    const state = leaseStateByProperty.get(propertyId);
+    if (!state) {
+      return 'ACTIVE';
+    }
+    if (state.hasActiveLease) {
+      return 'ACTIVE';
+    }
+    return state.hasAnyLease ? 'INACTIVE' : 'ACTIVE';
+  }
+
+  private buildLeaseStateMap(
+    leases: any[]
+  ): Map<string, { hasAnyLease: boolean; hasActiveLease: boolean }> {
+    const state = new Map<string, { hasAnyLease: boolean; hasActiveLease: boolean }>();
+
+    (leases || []).forEach((lease: any) => {
+      const propertyId = String(lease?.propertyId || lease?.property?.propertyId || '');
+      if (!propertyId) return;
+
+      const current = state.get(propertyId) || { hasAnyLease: false, hasActiveLease: false };
+      current.hasAnyLease = true;
+      if ((lease?.leaseStatus || '').toUpperCase() === 'ACTIVE') {
+        current.hasActiveLease = true;
+      }
+      state.set(propertyId, current);
+    });
+
+    return state;
   }
 
 }

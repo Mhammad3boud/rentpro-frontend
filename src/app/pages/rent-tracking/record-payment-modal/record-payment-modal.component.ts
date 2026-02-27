@@ -140,4 +140,8 @@ export class RecordPaymentModalComponent implements OnInit {
     console.log('Payment recorded:', this.payment);
     this.modalCtrl.dismiss(this.payment);
   }
+
+  get isEditMode(): boolean {
+    return !!this.preset;
+  }
 }

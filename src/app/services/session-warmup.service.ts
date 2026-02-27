@@ -7,6 +7,7 @@ import { UserService } from './user.service';
 import { LeaseService } from './lease.service';
 import { PaymentService } from './payments.service';
 import { MaintenanceService } from './maintenance.service';
+import { AiPredictionService } from './ai-prediction.service';
 
 @Injectable({ providedIn: 'root' })
 export class SessionWarmupService {
@@ -17,7 +18,8 @@ export class SessionWarmupService {
     private activityService: ActivityService,
     private leaseService: LeaseService,
     private paymentService: PaymentService,
-    private maintenanceService: MaintenanceService
+    private maintenanceService: MaintenanceService,
+    private aiPredictionService: AiPredictionService
   ) {}
 
   warmupAfterLogin(): void {
@@ -39,7 +41,8 @@ export class SessionWarmupService {
         : Promise.resolve(null),
       isTenant
         ? safe(firstValueFrom(this.maintenanceService.getMyRequests()))
-        : safe(firstValueFrom(this.maintenanceService.getPropertyRequests()))
+        : safe(firstValueFrom(this.maintenanceService.getPropertyRequests())),
+      safe(firstValueFrom(this.aiPredictionService.getDashboardSummary(isTenant ? 'TENANT' : 'OWNER')))
     ];
 
     void Promise.all(requests);

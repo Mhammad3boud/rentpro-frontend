@@ -187,4 +187,14 @@ export class TenantsPage implements OnInit {
     });
     await toast.present();
   }
+
+  getTenantStatusColor(status: string): string {
+    return (status || '').toUpperCase() === 'ACTIVE' ? 'success' : 'medium';
+  }
+
+  getTenantStatusLabel(status: string): string {
+    const normalized = (status || '').toUpperCase();
+    if (!normalized) return 'Unknown';
+    return normalized.charAt(0) + normalized.slice(1).toLowerCase();
+  }
 }

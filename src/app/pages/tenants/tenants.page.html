@@ -47,8 +47,8 @@
         <ion-card>
           <ion-card-header>
             <div class="card-header">
-              <ion-badge [color]="tenant.status === 'ACTIVE' ? 'success' : 'medium'" class="status-badge-top">
-                {{ tenant.status === 'ACTIVE' ? 'Active' : 'Inactive' }}
+              <ion-badge [color]="getTenantStatusColor(tenant.status)" class="status-badge-top">
+                {{ getTenantStatusLabel(tenant.status) }}
               </ion-badge>
               <div class="tenant-info">
                 <ion-icon name="person-circle-outline"></ion-icon>
