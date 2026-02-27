@@ -3,7 +3,15 @@
 // The list of file replacements can be found in `angular.json`.
 
 export const environment = {
-  production: false
+  production: false,
+  apiBaseUrl: 'http://localhost:8083',
+  appVersion: '1.0.0',
+  enforceVersionGateOnWeb: false,
+  updateUrls: {
+    android: 'https://play.google.com/store/apps/details?id=com.rentpro.app',
+    ios: 'https://apps.apple.com',
+    web: 'https://your-domain.example.com/download'
+  }
 };
 
 /*

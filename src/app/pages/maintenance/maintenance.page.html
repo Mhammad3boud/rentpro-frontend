@@ -2,7 +2,7 @@
   <ion-toolbar>
     <ion-title>Maintenance</ion-title>
     <ion-buttons slot="end">
-      <ion-button (click)="addMaintenanceTask()">
+      <ion-button (click)="addMaintenanceTask()" [disabled]="isTenant && !canCreateTenantRequest">
         <ion-icon name="add-outline" slot="icon-only"></ion-icon>
       </ion-button>
     </ion-buttons>
@@ -16,6 +16,33 @@
   </ion-refresher>
 
   <div class="search-filter-section">
+    <div class="spend-summary" *ngIf="!isTenant">
+      <ion-card class="summary-card total">
+        <ion-card-content>
+          <p>Total Maintenance Spent</p>
+          <h3>TZS {{ totalMaintenanceSpent | number:'1.0-0' }}</h3>
+        </ion-card-content>
+      </ion-card>
+      <ion-card class="summary-card resolved">
+        <ion-card-content>
+          <p>Resolved Jobs Spent</p>
+          <h3>TZS {{ resolvedMaintenanceSpent | number:'1.0-0' }}</h3>
+        </ion-card-content>
+      </ion-card>
+      <ion-card class="summary-card open">
+        <ion-card-content>
+          <p>Open Jobs Estimated</p>
+          <h3>TZS {{ openMaintenanceEstimated | number:'1.0-0' }}</h3>
+        </ion-card-content>
+      </ion-card>
+      <ion-card class="summary-card filtered">
+        <ion-card-content>
+          <p>Current Filter Total</p>
+          <h3>TZS {{ filteredMaintenanceSpent | number:'1.0-0' }}</h3>
+        </ion-card-content>
+      </ion-card>
+    </div>
+
     <ion-searchbar placeholder="Search maintenance tasks..." [(ngModel)]="searchTerm" (ionInput)="filterTasks()"
       animated="true">
     </ion-searchbar>
@@ -149,8 +176,8 @@
     <div *ngIf="filteredTasks.length === 0" class="empty-state">
       <ion-icon name="build-outline" class="empty-icon"></ion-icon>
       <h3>No Maintenance Tasks</h3>
-      <p>{{ isTenant ? 'Submit your first maintenance request' : 'Start by adding your first maintenance task' }}</p>
-      <ion-button fill="outline" (click)="addMaintenanceTask()">
+      <p>{{ isTenant ? (canCreateTenantRequest ? 'Submit your first maintenance request' : 'Your lease is terminated or expired. New requests are disabled.') : 'Start by adding your first maintenance task' }}</p>
+      <ion-button fill="outline" (click)="addMaintenanceTask()" [disabled]="isTenant && !canCreateTenantRequest">
         <ion-icon name="add-outline" slot="start"></ion-icon>
         {{ isTenant ? 'Submit Request' : 'Add Task' }}
       </ion-button>

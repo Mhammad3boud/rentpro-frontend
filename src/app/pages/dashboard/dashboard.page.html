@@ -1,6 +1,6 @@
 <ion-content>
   <ion-refresher slot="fixed" pullMax="100" pullMin="60 " (ionRefresh)="doRefresh($event)">
-    <ion-refresher-content refreshing-spinner="dots" pullingIcon="refresh"></ion-refresher-content>
+    <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
   <div class="dashboard-wrapper">
@@ -82,6 +82,44 @@
       </ion-card-content>
     </ion-card>
 
+    <ion-card class="quick-actions ai-insights-card" *ngIf="!isTenant">
+      <ion-card-header>
+        <ion-card-title>AI Insights</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-grid *ngIf="predictionSummary; else noPredictionData">
+          <ion-row>
+            <ion-col size="12" size-md="3">
+              <ion-text color="medium">Payment Risk</ion-text>
+              <h3>
+                <ion-badge [color]="predictionRiskColor(predictionSummary.paymentRiskLevel)">
+                  {{ predictionSummary.paymentRiskLevel }}
+                </ion-badge>
+                {{ predictionScorePercent(predictionSummary.paymentRiskScore) }}%
+              </h3>
+            </ion-col>
+            <ion-col size="12" size-md="3">
+              <ion-text color="medium">High Risk Leases</ion-text>
+              <h3>{{ predictionSummary.highRiskCount }}</h3>
+            </ion-col>
+            <ion-col size="12" size-md="3">
+              <ion-text color="medium">Maintenance Risk</ion-text>
+              <h3>{{ predictionSummary.maintenanceRiskCount }}</h3>
+            </ion-col>
+            <ion-col size="12" size-md="3" class="ion-align-self-center">
+              <ion-button expand="block" size="small" fill="outline" (click)="openAnalytics()">Open Analytics</ion-button>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+        <ng-template #noPredictionData>
+          <ion-text color="medium">
+            <p>Prediction data is not available yet.</p>
+          </ion-text>
+          <ion-button size="small" fill="outline" (click)="openAnalytics()">Open Analytics</ion-button>
+        </ng-template>
+      </ion-card-content>
+    </ion-card>
+
     <ion-card class="quick-actions">
       <ion-card-header>
         <ion-card-title>Quick Actions</ion-card-title>
@@ -106,7 +144,7 @@
                 <ion-icon name="people-outline" class="qa-icon"></ion-icon>
                 <div class="qa-text">
                   <h3>{{ isTenant ? 'Report Issue' : 'Add New Tenant' }}</h3>
-                  <p>{{ isTenant ? 'Submit maintenance request' : 'Register a new Tenant' }}</p>
+                  <p>{{ isTenant ? (hasActiveTenantLease ? 'Submit maintenance request' : 'No active lease - requests disabled') : 'Register a new Tenant' }}</p>
                 </div>
               </div>
             </ion-col>
@@ -129,18 +167,39 @@
         <ion-card-title>My Lease Details</ion-card-title>
       </ion-card-header>
       <ion-card-content>
-        <ion-list lines="none" class="recent-list">
-          <ion-item *ngFor="let lease of tenantLeases">
+        <ion-list lines="none" class="recent-list" *ngIf="activeTenantLeases.length > 0">
+          <ion-item *ngFor="let lease of activeTenantLeases">
             <ion-icon name="home-outline" slot="start" color="primary"></ion-icon>
             <ion-label>
               <h3>{{ lease.property?.propertyName || lease.leaseName || 'Property' }}</h3>
               <p>Unit: {{ lease.unit?.unitNumber || 'N/A' }}</p>
               <p>Rent: TZS {{ lease.monthlyRent | number:'1.0-0' }}</p>
               <p>Lease: {{ lease.startDate || '-' }} to {{ lease.endDate || '-' }}</p>
-              <p>Status: {{ lease.leaseStatus }}</p>
+              <p>Status: <ion-badge [color]="leaseStatusColor(lease.leaseStatus)">{{ lease.leaseStatus }}</ion-badge></p>
             </ion-label>
           </ion-item>
-          <ion-item *ngIf="tenantLeases.length === 0">
+        </ion-list>
+
+        <ion-list lines="none" class="recent-list" *ngIf="formerTenantLeases.length > 0">
+          <ion-item>
+            <ion-label>
+              <h3>Former Leases</h3>
+              <p>These leases are read-only history</p>
+            </ion-label>
+          </ion-item>
+          <ion-item *ngFor="let lease of formerTenantLeases">
+            <ion-icon name="archive-outline" slot="start" color="medium"></ion-icon>
+            <ion-label>
+              <h3>{{ lease.property?.propertyName || lease.leaseName || 'Property' }}</h3>
+              <p>Unit: {{ lease.unit?.unitNumber || 'N/A' }}</p>
+              <p>Lease: {{ lease.startDate || '-' }} to {{ lease.endDate || '-' }}</p>
+              <p>Status: <ion-badge [color]="leaseStatusColor(lease.leaseStatus)">{{ lease.leaseStatus }}</ion-badge></p>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+
+        <ion-list lines="none" class="recent-list" *ngIf="tenantLeases.length === 0">
+          <ion-item>
             <ion-icon name="information-circle-outline" color="medium" slot="start"></ion-icon>
             <ion-label>
               <h3>No lease assigned</h3>

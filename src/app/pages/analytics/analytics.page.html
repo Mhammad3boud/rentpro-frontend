@@ -1,0 +1,98 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Analytics</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="analytics-page">
+    <ion-grid>
+      <ion-row>
+        <ion-col size="12">
+          <ion-card class="summary-card">
+            <ion-card-header>
+              <ion-card-title>AI Prediction Summary</ion-card-title>
+              <ion-card-subtitle>Risk and forecast overview</ion-card-subtitle>
+            </ion-card-header>
+            <ion-card-content>
+              <div class="summary-grid" *ngIf="summary; else emptySummary">
+                <div class="summary-item">
+                  <div class="label">Payment Risk</div>
+                  <ion-badge [color]="riskBadgeColor(summary.paymentRiskLevel)">
+                    {{ summary.paymentRiskLevel }}
+                  </ion-badge>
+                  <div class="value">{{ displayRiskScore(summary.paymentRiskScore) }}</div>
+                </div>
+                <div class="summary-item">
+                  <div class="label">High Risk</div>
+                  <div class="value">{{ summary.highRiskCount }}</div>
+                </div>
+                <div class="summary-item">
+                  <div class="label">Maintenance Risk</div>
+                  <div class="value">{{ summary.maintenanceRiskCount }}</div>
+                </div>
+                <div class="summary-item">
+                  <div class="label">Updated</div>
+                  <div class="value small">{{ formatTime(summary.updatedAt) }}</div>
+                </div>
+              </div>
+
+              <ng-template #emptySummary>
+                <p class="muted">No prediction summary available yet.</p>
+              </ng-template>
+            </ion-card-content>
+          </ion-card>
+        </ion-col>
+      </ion-row>
+
+      <ion-row>
+        <ion-col size="12">
+          <ion-card>
+            <ion-card-header>
+              <ion-card-title>Prediction Details</ion-card-title>
+            </ion-card-header>
+            <ion-card-content>
+              <div class="filters">
+                <ion-segment [value]="selectedRisk" (ionChange)="filterByRisk($any($event.detail.value))">
+                  <ion-segment-button value="ALL">All</ion-segment-button>
+                  <ion-segment-button value="LOW">Low</ion-segment-button>
+                  <ion-segment-button value="MEDIUM">Medium</ion-segment-button>
+                  <ion-segment-button value="HIGH">High</ion-segment-button>
+                </ion-segment>
+              </div>
+
+              <div class="loading" *ngIf="isLoading">
+                <ion-spinner name="crescent"></ion-spinner>
+              </div>
+
+              <ion-list lines="none" *ngIf="!isLoading && filtered.length > 0">
+                <ion-item *ngFor="let prediction of filtered">
+                  <ion-label>
+                    <h3>{{ prediction.predictionType }}</h3>
+                    <p>Lease ID: {{ prediction.leaseId }}</p>
+                    <p>Predicted: {{ formatTime(prediction.predictedAt) }}</p>
+                  </ion-label>
+                  <ion-badge [color]="riskBadgeColor(prediction.riskLevel)">
+                    {{ prediction.riskLevel }} ({{ displayRiskScore(prediction.riskScore) }})
+                  </ion-badge>
+                </ion-item>
+              </ion-list>
+
+              <div class="empty" *ngIf="!isLoading && filtered.length === 0">
+                <ion-icon name="analytics-outline"></ion-icon>
+                <p>No predictions found for this filter.</p>
+              </div>
+            </ion-card-content>
+          </ion-card>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+  </div>
+</ion-content>

@@ -88,6 +88,23 @@ ion-searchbar {
   margin-bottom: 8px;
 }
 
+.unit-end-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-inline-start: 8px;
+}
+
+.unit-status-chip {
+  max-width: 220px;
+}
+
+.unit-status-chip ion-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .loading-overlay {
   position: absolute;
   top: 0;
@@ -103,5 +120,45 @@ ion-searchbar {
   
   ion-spinner {
     margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 767px) {
+  ion-content {
+    --padding-start: 10px;
+    --padding-end: 10px;
+  }
+
+  ion-list ion-item {
+    --padding-start: 10px;
+    --inner-padding-end: 8px;
+  }
+
+  .unit-end-controls {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    margin-inline-start: 4px;
+  }
+
+  .unit-status-chip {
+    max-width: 150px;
+    height: auto;
+  }
+
+  .unit-status-chip ion-label {
+    font-size: 0.72rem;
+    line-height: 1.2;
+    white-space: normal;
+    text-align: right;
+  }
+
+  ion-row.ion-justify-content-end {
+    gap: 0.5rem;
+
+    ion-button {
+      flex: 1 1 calc(50% - 0.25rem);
+      margin: 0;
+    }
   }
 }

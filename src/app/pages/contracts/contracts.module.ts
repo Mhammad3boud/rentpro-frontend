@@ -7,6 +7,7 @@ import { IonicModule } from '@ionic/angular';
 import { ContractsPageRoutingModule } from './contracts-routing.module';
 
 import { ContractsPage } from './contracts.page';
+import { LeaseChecklistModalComponent } from './lease-checklist-modal/lease-checklist-modal.component';
 
 @NgModule({
   imports: [
@@ -15,6 +16,6 @@ import { ContractsPage } from './contracts.page';
     IonicModule,
     ContractsPageRoutingModule
   ],
-  declarations: [ContractsPage]
+  declarations: [ContractsPage, LeaseChecklistModalComponent]
 })
 export class ContractsPageModule {}

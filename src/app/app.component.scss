@@ -1,0 +1,31 @@
+.force-update-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.force-update-card {
+  width: min(440px, 100%);
+  background: var(--ion-card-background, #ffffff);
+  color: var(--ion-text-color, #111111);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+}
+
+.force-update-card h2 {
+  margin: 0 0 8px;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.force-update-card p {
+  margin: 0 0 16px;
+  line-height: 1.45;
+  color: var(--ion-color-medium);
+}

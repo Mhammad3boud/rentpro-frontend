@@ -2,8 +2,9 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ModalController, AlertController, ToastController } from '@ionic/angular';
 import { GenerateContractModalComponent } from './generate-contract-modal/generate-contract-modal.component';
-import { LeaseService } from '../../services/lease.service';
-import { Lease } from '../../models';
+import { LeaseChecklistModalComponent } from './lease-checklist-modal/lease-checklist-modal.component';
+import { CheckInLeaseRequest, CheckOutLeaseRequest, LeaseService, TerminateLeaseRequest } from '../../services/lease.service';
+import { Lease, LeaseChecklistItem } from '../../models';
 import { UserService } from '../../services/user.service';
 
 
@@ -18,6 +19,15 @@ interface Contract {
   deposit: number;
   generated: string;
   status: string;
+  checkInDate?: string;
+  checkedInAt?: string;
+  checkInNotes?: string;
+  checkOutDate?: string;
+  checkedOutAt?: string;
+  checkOutReason?: string;
+  checkOutNotes?: string;
+  checkInChecklist?: LeaseChecklistItem[];
+  checkOutChecklist?: LeaseChecklistItem[];
 }
 
 @Component({
@@ -32,6 +42,7 @@ export class ContractsPage implements OnInit {
   searchTerm = '';
   isLoading = true;
   isTenant = false;
+  tenantHasActiveContract = false;
   private readonly baseUrl = 'http://localhost:8083';
 
   constructor(
@@ -71,6 +82,10 @@ export class ContractsPage implements OnInit {
       next: (leases) => {
         console.log('Loaded leases:', leases);
         this.contracts = leases.map((lease) => this.mapLeaseToContract(lease));
+        this.tenantHasActiveContract = this.contracts.some(c => {
+          const status = (c.status || '').toUpperCase();
+          return status === 'ACTIVE' || status === 'EXPIRING SOON';
+        });
         console.log('Mapped contracts:', this.contracts);
         this.filterContracts();
         this.isLoading = false;
@@ -105,7 +120,16 @@ export class ContractsPage implements OnInit {
       rent: lease.monthlyRent || 0,
       deposit: lease.securityDeposit != null ? lease.securityDeposit : (lease.monthlyRent || 0) * 2,
       generated: lease.createdAt?.slice(0, 10) || '',
-      status: this.computeStatus(lease.startDate || '', lease.endDate || ''),
+      status: this.computeContractStatus(lease),
+      checkInDate: lease.checkInDate,
+      checkedInAt: lease.checkedInAt,
+      checkInNotes: lease.checkInNotes,
+      checkOutDate: lease.checkOutDate,
+      checkedOutAt: lease.checkedOutAt,
+      checkOutReason: lease.checkOutReason,
+      checkOutNotes: lease.checkOutNotes,
+      checkInChecklist: lease.checkInChecklist || [],
+      checkOutChecklist: lease.checkOutChecklist || [],
     };
   }
 
@@ -209,6 +233,102 @@ export class ContractsPage implements OnInit {
     }
   }
 
+  async confirmTerminate(contract: Contract) {
+    const today = new Date().toISOString().slice(0, 10);
+    const alert = await this.alertController.create({
+      header: 'Terminate Contract',
+      message: `Provide termination details for ${contract.id}.`,
+      inputs: [
+        {
+          name: 'reason',
+          type: 'text',
+          placeholder: 'Reason (required)',
+          attributes: { maxlength: 120 }
+        },
+        {
+          name: 'notes',
+          type: 'textarea',
+          placeholder: 'Additional notes (optional)'
+        },
+        {
+          name: 'terminationDate',
+          type: 'date',
+          value: today
+        }
+      ],
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Terminate',
+          role: 'destructive',
+          handler: (data) => {
+            const reason = (data?.reason || '').trim();
+            if (!reason) {
+              this.presentToast('Termination reason is required', 'danger');
+              return false;
+            }
+            this.terminateContract(contract, {
+              reason,
+              notes: (data?.notes || '').trim() || undefined,
+              terminationDate: data?.terminationDate || today,
+            });
+            return true;
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+
+  async confirmCheckIn(contract: Contract) {
+    const modal = await this.modalCtrl.create({
+      component: LeaseChecklistModalComponent,
+      componentProps: {
+        mode: 'check-in',
+        initialChecklist: contract.checkInChecklist || [],
+      },
+    });
+
+    await modal.present();
+    const { data } = await modal.onWillDismiss();
+    if (!data) return;
+
+    const payload: CheckInLeaseRequest = {
+      checkInDate: data.actionDate,
+      notes: data.notes,
+      checklist: data.checklist,
+    };
+    this.checkInContract(contract, payload);
+  }
+
+  async confirmCheckOut(contract: Contract) {
+    const modal = await this.modalCtrl.create({
+      component: LeaseChecklistModalComponent,
+      componentProps: {
+        mode: 'check-out',
+        initialChecklist: contract.checkOutChecklist || [],
+      },
+    });
+
+    await modal.present();
+    const { data } = await modal.onWillDismiss();
+    if (!data) return;
+
+    const reason = (data.reason || '').trim();
+    if (!reason) {
+      this.presentToast('Check-out reason is required', 'danger');
+      return;
+    }
+
+    const payload: CheckOutLeaseRequest = {
+      reason,
+      checkOutDate: data.actionDate,
+      notes: data.notes,
+      checklist: data.checklist,
+    };
+    this.checkOutContract(contract, payload);
+  }
+
   downloadPdf(contract: Contract) {
     // If contract has a real leaseId, try backend PDF first
     if (contract.leaseId) {
@@ -261,6 +381,45 @@ export class ContractsPage implements OnInit {
     });
   }
 
+  private terminateContract(contract: Contract, payload: TerminateLeaseRequest) {
+    this.leaseService.terminateLease(contract.leaseId, payload).subscribe({
+      next: () => {
+        this.loadContracts();
+        this.presentToast('Contract terminated', 'success');
+      },
+      error: (err) => {
+        console.error('Failed to terminate contract:', err);
+        this.presentToast('Failed to terminate contract', 'danger');
+      },
+    });
+  }
+
+  private checkInContract(contract: Contract, payload: CheckInLeaseRequest) {
+    this.leaseService.checkInLease(contract.leaseId, payload).subscribe({
+      next: () => {
+        this.loadContracts();
+        this.presentToast('Tenant check-in recorded', 'success');
+      },
+      error: (err) => {
+        console.error('Failed to check in contract:', err);
+        this.presentToast('Failed to record check-in', 'danger');
+      },
+    });
+  }
+
+  private checkOutContract(contract: Contract, payload: CheckOutLeaseRequest) {
+    this.leaseService.checkOutLease(contract.leaseId, payload).subscribe({
+      next: () => {
+        this.loadContracts();
+        this.presentToast('Tenant check-out recorded', 'success');
+      },
+      error: (err) => {
+        console.error('Failed to check out contract:', err);
+        this.presentToast('Failed to record check-out', 'danger');
+      },
+    });
+  }
+
   private async presentToast(message: string, color: 'success' | 'danger' | 'primary' | 'medium') {
     const toast = await this.toastController.create({
       message,
@@ -282,6 +441,47 @@ export class ContractsPage implements OnInit {
     const diffDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays <= 30) return 'Expiring Soon';
     return 'Active';
+  }
+
+  private computeContractStatus(lease: Lease): string {
+    const backendStatus = (lease.leaseStatus || '').toUpperCase();
+    if (backendStatus === 'TERMINATED') return 'Terminated';
+    if (backendStatus === 'EXPIRED') return 'Expired';
+    if (backendStatus === 'ACTIVE') {
+      // Keep "Expiring Soon" UX hint while lease is still active.
+      return this.computeStatus(lease.startDate || '', lease.endDate || '');
+    }
+    return this.computeStatus(lease.startDate || '', lease.endDate || '');
+  }
+
+  getStatusColor(status: string): string {
+    switch ((status || '').toUpperCase()) {
+      case 'ACTIVE':
+        return 'success';
+      case 'EXPIRED':
+        return 'danger';
+      case 'TERMINATED':
+        return 'medium';
+      case 'EXPIRING SOON':
+        return 'warning';
+      default:
+        return 'medium';
+    }
+  }
+
+  canTerminate(contract: Contract): boolean {
+    const status = (contract.status || '').toUpperCase();
+    return status === 'ACTIVE' || status === 'EXPIRING SOON';
+  }
+
+  canCheckIn(contract: Contract): boolean {
+    const status = (contract.status || '').toUpperCase();
+    return (status === 'ACTIVE' || status === 'EXPIRING SOON') && !contract.checkedInAt;
+  }
+
+  canCheckOut(contract: Contract): boolean {
+    const status = (contract.status || '').toUpperCase();
+    return status === 'ACTIVE' || status === 'EXPIRING SOON';
   }
 
   // Lazy-load jsPDF from CDN; fallback to .txt if unavailable

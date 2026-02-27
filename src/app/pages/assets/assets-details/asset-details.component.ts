@@ -25,18 +25,7 @@ export class AssetDetailsComponent implements OnInit {
     const propertyRef = this.asset.id.toString();
     console.log('Loading tenants for property:', propertyRef);
     console.log('Full asset object:', this.asset);
-    
-    // First trigger lease status updates, then load tenants
-    this.tenantsService.updateExpiredLeases().subscribe({
-      next: () => {
-        console.log('Lease status updated successfully');
-      },
-      error: (error) => {
-        console.warn('Failed to update lease status:', error);
-        // Continue with tenant loading even if lease update fails
-      }
-    });
-    
+
     // Load all tenants and filter locally since TenantsService doesn't have property-specific endpoint
     this.tenantsService.list().subscribe({
       next: (allTenants: TenantDto[]) => {
@@ -65,35 +54,31 @@ export class AssetDetailsComponent implements OnInit {
 
   getPropertyIcon(propertyType: string): string {
     const iconMap: Record<string, string> = {
-      'Standalone Property': 'home-outline',
-      'Multi-Unit Property': 'business-outline',
+      'House': 'home-outline',
+      'Apartment': 'business-outline',
       'Farm': 'leaf-outline',
       'Land': 'map-outline',
       'Warehouse': 'archive-outline',
-      'Office Building': 'business-outline',
-      'Commercial Property': 'storefront-outline',
-      'Industrial Property': 'factory-outline',
+      'Office': 'business-outline',
+      'Shop': 'storefront-outline',
       'Other Property': 'cube-outline'
     };
     return iconMap[propertyType] || 'home-outline';
   }
 
   getDisplayPropertyType(): string {
-    if (this.asset.structureType === 'MULTI_UNIT') {
-      return 'Multi-Unit Property';
-    } else if ((this.asset.meta as any)?.['propertyType']) {
-      const typeMap: Record<string, string> = {
-        'FARM': 'Farm',
-        'LAND': 'Land',
-        'WAREHOUSE': 'Warehouse',
-        'OFFICE': 'Office Building',
-        'COMMERCIAL': 'Commercial Property',
-        'INDUSTRIAL': 'Industrial Property',
-        'OTHER': 'Other Property'
-      };
-      return typeMap[(this.asset.meta as any)['propertyType']] || 'Property';
-    }
-    return 'Standalone Property';
+    const assetCategory = (this.asset as any).assetCategory || (this.asset.meta as any)?.['propertyType'];
+    const typeMap: Record<string, string> = {
+      'HOUSE': 'House',
+      'APARTMENT': 'Apartment',
+      'FARM': 'Farm',
+      'LAND': 'Land',
+      'WAREHOUSE': 'Warehouse',
+      'OFFICE': 'Office',
+      'SHOP': 'Shop',
+      'OTHER': 'Other Property'
+    };
+    return typeMap[assetCategory] || (this.asset.structureType === 'MULTI_UNIT' ? 'Apartment' : 'House');
   }
 
   formatCoordinates(lat?: number, lng?: number): string {

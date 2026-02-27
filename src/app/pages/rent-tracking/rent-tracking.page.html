@@ -2,7 +2,7 @@
   <ion-toolbar>
     <ion-title>{{ isTenant ? 'My Rent' : 'Rent Tracking' }}</ion-title>
     <ion-buttons slot="end" *ngIf="!isTenant">
-      <ion-button color="success" (click)="openRecordPaymentModal()">
+      <ion-button (click)="openRecordPaymentModal()">
         <ion-icon slot="icon-only" name="add-outline"></ion-icon>
       </ion-button>
     </ion-buttons>

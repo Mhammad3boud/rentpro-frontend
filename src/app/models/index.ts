@@ -4,6 +4,7 @@
  */
 export type Role = 'OWNER' | 'TENANT';
 export type PropertyType = 'STANDALONE' | 'MULTI_UNIT';
+export type AssetCategory = 'HOUSE' | 'APARTMENT' | 'LAND' | 'FARM' | 'SHOP' | 'OFFICE' | 'WAREHOUSE' | 'OTHER';
 export type UsageType = 'RESIDENTIAL' | 'COMMERCIAL' | 'MIXED';
 export type LeaseStatus = 'ACTIVE' | 'EXPIRED' | 'TERMINATED';
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'CHECK';
@@ -60,6 +61,7 @@ export interface Property {
   ownerId: string;
   propertyName: string;
   propertyType: PropertyType;
+  assetCategory?: AssetCategory;
   usageType?: UsageType;
   address?: string;
   region?: string;
@@ -108,7 +110,27 @@ export interface Lease {
   startDate?: string;
   endDate?: string;
   leaseStatus: LeaseStatus;
+  terminationReason?: string;
+  terminationNotes?: string;
+  terminationDate?: string;
+  terminatedAt?: string;
+  checkInDate?: string;
+  checkedInAt?: string;
+  checkInNotes?: string;
+  checkOutDate?: string;
+  checkedOutAt?: string;
+  checkOutReason?: string;
+  checkOutNotes?: string;
+  checkInChecklist?: LeaseChecklistItem[];
+  checkOutChecklist?: LeaseChecklistItem[];
   createdAt: string;
+}
+
+export interface LeaseChecklistItem {
+  item: string;
+  condition?: string;
+  checked?: boolean;
+  notes?: string;
 }
 
 /**
@@ -132,10 +154,10 @@ export interface RentPayment {
  */
 export interface MaintenanceRequest {
   requestId: string;
-  leaseId: string;
+  leaseId?: string;
   propertyId: string;
   unitId?: string;
-  tenantId: string;
+  tenantId?: string;
   title: string;
   description: string;
   priority: MaintenancePriority;
@@ -256,6 +278,7 @@ export interface CreatePropertyRequest {
   // New format fields (matching database schema)
   propertyName?: string;
   propertyType?: PropertyType;
+  assetCategory?: AssetCategory;
   usageType?: UsageType;
   address?: string;
   region?: string;
@@ -310,7 +333,7 @@ export interface CreatePaymentRequest {
 }
 
 export interface CreateMaintenanceRequest {
-  leaseId: string;
+  leaseId?: string;
   propertyId?: string;
   unitId?: string;
   title: string;

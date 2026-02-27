@@ -14,6 +14,7 @@ export class AddAssetComponent implements OnInit {
   @Input() asset: any = {
     title: '',
     propertyType: 'STANDALONE',
+    assetCategory: 'HOUSE',
     propertyUsage: 'RESIDENTIAL',
     address: '',
     region: '',
@@ -39,12 +40,16 @@ export class AddAssetComponent implements OnInit {
     this.showUnits = this.asset.propertyType === 'MULTI_UNIT';
     
     // Initialize residential property flag
-    this.isResidentialProperty = ['STANDALONE', 'MULTI_UNIT'].includes(this.asset.propertyType);
+    this.isResidentialProperty = ['HOUSE', 'APARTMENT'].includes(this.asset.assetCategory);
     
     // Initialize status from existing asset meta if in edit mode
     if (this.isEditMode && this.asset.meta) {
       this.asset.status = (this.asset.meta.status || 'ACTIVE') as AssetStatus;
     }
+    if (!this.asset.assetCategory) {
+      this.asset.assetCategory = (this.asset.meta as any)?.['propertyType'] || 'HOUSE';
+    }
+    this.onAssetCategoryChange();
   }
 
   get isEditMode(): boolean {
@@ -68,17 +73,19 @@ export class AddAssetComponent implements OnInit {
       }
     }
     
-    // Update residential property flag
-    this.isResidentialProperty = ['STANDALONE', 'MULTI_UNIT'].includes(this.asset.propertyType);
-    
-    // Smart property usage defaults - only update if not already set
+    // Keep structure logic only; category logic handled separately.
+    this.onAssetCategoryChange();
+  }
+
+  onAssetCategoryChange() {
+    this.isResidentialProperty = ['HOUSE', 'APARTMENT'].includes(this.asset.assetCategory);
+
+    // Smart usage defaults - only when usage is empty
     if (!this.asset.propertyUsage) {
-      if (this.asset.propertyType === 'FARM') {
-        this.asset.propertyUsage = 'AGRICULTURAL';
-      } else if (['WAREHOUSE', 'INDUSTRIAL'].includes(this.asset.propertyType)) {
-        this.asset.propertyUsage = 'INDUSTRIAL';
-      } else if (['OFFICE', 'COMMERCIAL'].includes(this.asset.propertyType)) {
+      if (['LAND', 'FARM', 'SHOP', 'OFFICE', 'WAREHOUSE'].includes(this.asset.assetCategory)) {
         this.asset.propertyUsage = 'COMMERCIAL';
+      } else {
+        this.asset.propertyUsage = 'RESIDENTIAL';
       }
     }
   }
@@ -94,23 +101,23 @@ export class AddAssetComponent implements OnInit {
     }
   }
 
+  trackByIndex(index: number): number {
+    return index;
+  }
+
   private clean(v: any) {
     return (v ?? '').toString().trim();
   }
 
   private buildRequest(): CreatePropertyRequest {
-    // Map property usage to backend category
-    const categoryMap: Record<string, string> = {
-      'RESIDENTIAL': 'RENTAL',
-      'COMMERCIAL': 'OFFICE',
-      'MIXED': 'RENTAL',
-      'AGRICULTURAL': 'FARM',
-      'INDUSTRIAL': 'WAREHOUSE'
-    };
+    const fallbackUsage: 'RESIDENTIAL' | 'COMMERCIAL' = ['LAND', 'FARM', 'SHOP', 'OFFICE', 'WAREHOUSE'].includes(this.asset.assetCategory)
+      ? 'COMMERCIAL'
+      : 'RESIDENTIAL';
+    const resolvedUsage = this.mapUsageTypeForBackend(this.asset.propertyUsage) || fallbackUsage;
 
     const meta: Record<string, unknown> = {
-      propertyType: this.asset.propertyType,
-      propertyUsage: this.asset.propertyUsage,
+      propertyType: this.asset.assetCategory,
+      propertyUsage: resolvedUsage,
       region: this.clean(this.asset.region),
       postcode: this.clean(this.asset.postcode),
       waterMeterNumber: this.clean(this.asset.waterMeterNumber),
@@ -119,8 +126,17 @@ export class AddAssetComponent implements OnInit {
     };
 
     return {
+      propertyName: this.clean(this.asset.title),
+      propertyType: this.asset.propertyType,
+      assetCategory: this.asset.assetCategory,
+      usageType: resolvedUsage,
+      region: this.clean(this.asset.region) || undefined,
+      postcode: this.clean(this.asset.postcode) || undefined,
+      waterMeterNo: this.clean(this.asset.waterMeterNumber) || undefined,
+      electricityMeterNo: this.clean(this.asset.electricityMeterNumber) || undefined,
+      unitNumbers: this.asset.propertyType === 'MULTI_UNIT' ? this.asset.units : undefined,
       title: this.clean(this.asset.title),
-      category: categoryMap[this.asset.propertyUsage] || 'RENTAL',
+      category: this.asset.assetCategory || 'OTHER',
       structureType: this.asset.propertyType,
       unitCount: this.asset.propertyType === 'MULTI_UNIT' ? this.asset.units.length : 1,
       units: this.asset.propertyType === 'MULTI_UNIT' ? this.asset.units : undefined,
@@ -132,6 +148,17 @@ export class AddAssetComponent implements OnInit {
     };
   }
 
+  private mapUsageTypeForBackend(value: string): 'RESIDENTIAL' | 'COMMERCIAL' | 'MIXED' | undefined {
+    const normalized = (value || '').trim().toUpperCase();
+    if (normalized === 'RESIDENTIAL' || normalized === 'COMMERCIAL' || normalized === 'MIXED') {
+      return normalized as 'RESIDENTIAL' | 'COMMERCIAL' | 'MIXED';
+    }
+    if (normalized === 'AGRICULTURAL' || normalized === 'INDUSTRIAL') {
+      return 'COMMERCIAL';
+    }
+    return undefined;
+  }
+
   getLeasePreview(): UnitInfo[] {
     if (!this.asset.title) return [];
     
@@ -140,7 +167,8 @@ export class AddAssetComponent implements OnInit {
       this._cachedLeasePreview = this.propertiesService.generateLeaseNames(
         this.asset.title,
         this.asset.propertyType,
-        this.asset.units
+        this.asset.units,
+        this.asset.assetCategory
       );
     }
     return this._cachedLeasePreview;
@@ -153,7 +181,8 @@ export class AddAssetComponent implements OnInit {
     this._cachedLeasePreview = this.propertiesService.generateLeaseNames(
       this.asset.title,
       this.asset.propertyType,
-      this.asset.units
+      this.asset.units,
+      this.asset.assetCategory
     );
     console.log('Generated lease names:', this._cachedLeasePreview);
     

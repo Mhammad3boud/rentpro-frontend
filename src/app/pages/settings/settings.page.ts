@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Location } from '@angular/common';
 import { UserProfileService } from '../../services/user-profile.service';
 import { UserService } from '../../services/user.service';
+import { VersionCheckService } from '../../services/version-check.service';
 import { UserProfile, ThemePreference } from '../../models';
 import { firstValueFrom } from 'rxjs';
 
@@ -17,6 +18,7 @@ export class SettingsPage implements OnInit {
   darkMode = false;
   userProfile: UserProfile | null = null;
   isLoading = true;
+  appVersion = '-';
 
   // Notification settings
   notificationEmail = true;
@@ -32,13 +34,25 @@ export class SettingsPage implements OnInit {
     private location: Location,
     private platform: Platform,
     private userProfileService: UserProfileService,
-    private userService: UserService
+    private userService: UserService,
+    private versionCheckService: VersionCheckService
   ) {
     this.darkMode = document.body.classList.contains('dark');
   }
 
   async ngOnInit() {
-    await this.loadUserProfile();
+    await Promise.all([
+      this.loadUserProfile(),
+      this.loadAppVersion()
+    ]);
+  }
+
+  private async loadAppVersion() {
+    try {
+      this.appVersion = await this.versionCheckService.getCurrentAppVersion();
+    } catch {
+      this.appVersion = '-';
+    }
   }
 
   async loadUserProfile() {
@@ -58,6 +72,21 @@ export class SettingsPage implements OnInit {
 
   getProfilePictureUrl(): string {
     return this.userProfileService.getProfilePictureUrl(this.userProfile?.profilePicture);
+  }
+
+  getDisplayName(): string {
+    const fullName = (this.userProfile?.fullName || '').trim();
+    if (fullName) return fullName;
+
+    const email = (this.userProfile?.email || '').trim();
+    if (!email) return 'User';
+
+    const localPart = email.split('@')[0] || 'User';
+    return localPart
+      .split(/[._-]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
   }
 
   async toggleDarkMode() {

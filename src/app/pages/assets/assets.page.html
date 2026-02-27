@@ -36,13 +36,8 @@
       >
         <ion-select-option value="all">All Types</ion-select-option>
 
-        <ion-select-option value="Standalone Property"
-          >Standalone Property</ion-select-option
-        >
-
-        <ion-select-option value="Multi-Unit Property"
-          >Multi-Unit Property</ion-select-option
-        >
+        <ion-select-option value="House">House</ion-select-option>
+        <ion-select-option value="Apartment">Apartment</ion-select-option>
 
         <ion-select-option value="Farm">Farm</ion-select-option>
 
@@ -50,17 +45,8 @@
 
         <ion-select-option value="Warehouse">Warehouse</ion-select-option>
 
-        <ion-select-option value="Office Building"
-          >Office Building</ion-select-option
-        >
-
-        <ion-select-option value="Commercial Property"
-          >Commercial Property</ion-select-option
-        >
-
-        <ion-select-option value="Industrial Property"
-          >Industrial Property</ion-select-option
-        >
+        <ion-select-option value="Office">Office</ion-select-option>
+        <ion-select-option value="Shop">Shop</ion-select-option>
 
         <ion-select-option value="Other Property"
           >Other Property</ion-select-option
@@ -81,7 +67,9 @@
                 <span>{{ asset.type }}</span>
               </div>
 
-              <ion-badge color="success">Active</ion-badge>
+              <ion-badge [color]="getAssetStatusColor(asset.status)">
+                {{ asset.status === 'ACTIVE' ? 'Active' : 'Inactive' }}
+              </ion-badge>
             </div>
 
             <h3>{{ asset.name }}</h3>

@@ -5,6 +5,7 @@ import { AddMaintenanceTaskComponent } from './add-maintenance-task/add-maintena
 import { PhotoViewerComponent } from './photo-viewer/photo-viewer.component';
 import { MaintenanceService, MaintenanceRequest, MaintenancePhoto, CreateMaintenanceRequest, UpdateMaintenanceStatusRequest } from '../../services/maintenance.service';
 import { UserService } from '../../services/user.service';
+import { LeaseService } from '../../services/lease.service';
 
 @Component({
   selector: 'app-maintenance',
@@ -22,6 +23,11 @@ export class MaintenancePage implements OnInit {
   isLoading = false;
   isTenant = false;
   highlightedRequestId: string | null = null;
+  canCreateTenantRequest = true;
+  totalMaintenanceSpent = 0;
+  resolvedMaintenanceSpent = 0;
+  openMaintenanceEstimated = 0;
+  filteredMaintenanceSpent = 0;
 
   constructor(
     private router: Router,
@@ -32,7 +38,8 @@ export class MaintenancePage implements OnInit {
     private cdr: ChangeDetectorRef,
     private maintenanceService: MaintenanceService,
     private userService: UserService,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private leaseService: LeaseService
   ) {}
 
   ngOnInit() {
@@ -40,6 +47,18 @@ export class MaintenancePage implements OnInit {
     this.route.queryParamMap.subscribe(params => {
       this.highlightedRequestId = params.get('requestId');
     });
+    if (this.isTenant) {
+      this.leaseService.getTenantLeases().subscribe({
+        next: (leases) => {
+          this.canCreateTenantRequest = (leases || []).some(lease => (lease.leaseStatus || '').toUpperCase() === 'ACTIVE');
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.canCreateTenantRequest = false;
+          this.cdr.detectChanges();
+        }
+      });
+    }
     this.loadMaintenanceTasks();
   }
 
@@ -52,8 +71,7 @@ export class MaintenancePage implements OnInit {
     request$.subscribe({
       next: (tasks) => {
         this.maintenanceTasks = this.prioritizeHighlightedTask(tasks);
-        this.filteredTasks = [...tasks];
-        this.filteredTasks = this.prioritizeHighlightedTask(this.filteredTasks);
+        this.filterTasks();
         this.isLoading = false;
         this.cdr.detectChanges();
       },
@@ -72,6 +90,7 @@ export class MaintenancePage implements OnInit {
   }
 
   filterTasks() {
+    this.calculateMaintenanceSpendSummary(this.maintenanceTasks);
     let filtered = [...this.maintenanceTasks];
 
     if (this.searchTerm) {
@@ -99,10 +118,15 @@ export class MaintenancePage implements OnInit {
       filtered = filtered.filter(task => task.priority === mappedPriority);
     }
 
-    this.filteredTasks = filtered;
+    this.filteredTasks = this.prioritizeHighlightedTask(filtered);
+    this.filteredMaintenanceSpent = this.sumMaintenanceCost(this.filteredTasks);
   }
 
   async addMaintenanceTask() {
+    if (this.isTenant && !this.canCreateTenantRequest) {
+      this.presentToast('Your lease is terminated or expired. New maintenance requests are disabled.', 'primary');
+      return;
+    }
     console.log('Add maintenance task button clicked'); 
     
     try {
@@ -122,7 +146,7 @@ export class MaintenancePage implements OnInit {
       
       if (data) {
         const createRequest: CreateMaintenanceRequest = {
-          leaseId: data.leaseId,
+          leaseId: data.leaseId || undefined,
           propertyId: data.propertyId || undefined,
           unitId: data.unitId || undefined,
           title: data.title,
@@ -183,6 +207,7 @@ export class MaintenancePage implements OnInit {
       component: AddMaintenanceTaskComponent,
       componentProps: {
         taskData: {
+          requestId: task.requestId || task.id || '',
           leaseId: task.leaseId || '',
           propertyId: task.propertyId || '',
           unitId: task.unitId,
@@ -202,13 +227,19 @@ export class MaintenancePage implements OnInit {
     
     const { data } = await modal.onDidDismiss();
     if (data) {
-      const updateRequest: UpdateMaintenanceStatusRequest = {
-        status: data.status || task.status,
+      const updateRequest = {
+        leaseId: data.leaseId || undefined,
+        propertyId: data.propertyId || undefined,
+        unitId: data.unitId || undefined,
+        title: data.title,
+        description: data.description,
+        priority: data.priority,
         assignedTechnician: data.assignedTechnician,
-        maintenanceCost: data.maintenanceCost
+        maintenanceCost: data.maintenanceCost,
+        status: data.status || task.status
       };
       
-      this.maintenanceService.updateRequestStatus(task.requestId || task.id || '', updateRequest).subscribe({
+      this.maintenanceService.updateRequest(task.requestId || task.id || '', updateRequest).subscribe({
         next: (updatedTask) => {
           const index = this.maintenanceTasks.findIndex(t => (t.requestId || t.id) === (task.requestId || task.id));
           if (index !== -1) {
@@ -579,5 +610,34 @@ export class MaintenancePage implements OnInit {
         }
       });
     });
+  }
+
+  private calculateMaintenanceSpendSummary(tasks: MaintenanceRequest[]) {
+    this.totalMaintenanceSpent = 0;
+    this.resolvedMaintenanceSpent = 0;
+    this.openMaintenanceEstimated = 0;
+
+    (tasks || []).forEach(task => {
+      const cost = this.toCost(task.maintenanceCost);
+      if (cost <= 0) {
+        return;
+      }
+
+      this.totalMaintenanceSpent += cost;
+      if (task.status === 'RESOLVED') {
+        this.resolvedMaintenanceSpent += cost;
+      } else {
+        this.openMaintenanceEstimated += cost;
+      }
+    });
+  }
+
+  private sumMaintenanceCost(tasks: MaintenanceRequest[]): number {
+    return (tasks || []).reduce((sum, task) => sum + this.toCost(task.maintenanceCost), 0);
+  }
+
+  private toCost(value: unknown): number {
+    const cost = Number(value || 0);
+    return Number.isFinite(cost) && cost > 0 ? cost : 0;
   }
 }

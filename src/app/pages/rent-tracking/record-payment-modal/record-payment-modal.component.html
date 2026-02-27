@@ -1,6 +1,6 @@
 <ion-header>
   <ion-toolbar>
-    <ion-title>Record Rent Payment</ion-title>
+    <ion-title>{{ isEditMode ? 'Update Rent Payment' : 'Record Rent Payment' }}</ion-title>
     <ion-buttons slot="end">
       <ion-button (click)="cancel()">✕</ion-button>
     </ion-buttons>
@@ -8,7 +8,7 @@
 </ion-header>
 
 <ion-content class="ion-padding">
-  <p>Add a new rent payment record</p>
+  <p>{{ isEditMode ? 'Update existing rent payment record' : 'Add a new rent payment record' }}</p>
 
   <ion-grid>
     <!-- Lease Selection Dropdown -->
@@ -138,6 +138,8 @@
 
   <ion-row class="ion-justify-content-end ion-padding-top">
     <ion-button fill="clear" (click)="cancel()">Cancel</ion-button>
-    <ion-button color="success" (click)="addPayment()">Add Payment</ion-button>
+    <ion-button color="success" (click)="addPayment()">
+      {{ isEditMode ? 'Update Payment' : 'Add Payment' }}
+    </ion-button>
   </ion-row>
 </ion-content>

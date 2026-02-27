@@ -25,15 +25,36 @@
 @import "~@ionic/angular/css/text-transformation.css";
 @import "~@ionic/angular/css/flex-utils.css";
 
-/* Add left padding to ion-title to accommodate menu button */
-ion-title {
-  padding-left: 70px;
-  padding-top: 25px;
+/* Global header alignment */
+ion-header ion-toolbar {
+  --min-height: 56px;
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --padding-top: 10px;
+  --padding-bottom: 8px;
 }
 
-ion-toolbar {
-  height: 70px;
+ion-header ion-title {
+  padding-inline: 0;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-weight: 600;
+  margin-left: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
+ion-header ion-buttons {
+  align-items: center;
+}
+
+ion-header ion-buttons ion-button {
+  --padding-start: 8px;
+  --padding-end: 8px;
+  margin: 0;
+  height: 40px;
+  width: 40px;
 }
 
 @import "@ionic/angular/css/palettes/dark.system.css";
@@ -126,9 +147,20 @@ ion-header ion-toolbar {
   --border-color: var(--ion-border-color);
 }
 
+@media (min-width: 768px) {
+  ion-header ion-title {
+    margin-left: 55px !important;
+  }
+}
+
 /* Content theming */
 ion-content {
   --background: var(--ion-background-color);
+  --padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+}
+
+ion-content::part(scroll) {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
 }
 
 /* Segment theming */
@@ -208,5 +240,27 @@ ion-searchbar {
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
+  }
+}
+
+@media (max-width: 767px) {
+  ion-header ion-toolbar {
+    --min-height: 52px;
+    --padding-start: 8px;
+    --padding-end: 8px;
+    --padding-top: 8px;
+    --padding-bottom: 6px;
+  }
+
+  ion-header ion-title {
+    margin-left: 6px;
+    font-size: 1rem;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  ion-header ion-buttons ion-button {
+    height: 36px;
+    width: 36px;
   }
 }

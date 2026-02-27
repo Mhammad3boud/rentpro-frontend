@@ -534,9 +534,13 @@ export class RentTrackingPage implements OnInit {
 
   async markUnpaid(record: RentRecord) {
     try {
-      // Call delete payment API (once implemented)
-      // For now, just show a message
-      this.presentToast('Delete functionality not yet available in backend', 'medium');
+      if (!this.isUuid(record.id)) {
+        this.presentToast('Cannot mark unpaid: missing payment record id', 'danger');
+        return;
+      }
+      await this.rentService.markPaymentUnpaid(record.id);
+      await this.loadRentRecords();
+      this.presentToast('Payment marked as unpaid', 'success');
     } catch (error) {
       console.error('Error marking payment as unpaid:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to mark payment as unpaid';
@@ -604,9 +608,19 @@ export class RentTrackingPage implements OnInit {
   }
 
   private async deleteRecord(record: RentRecord) {
-    // For now, we'll just show a message since the backend doesn't have a delete payment endpoint
-    // In a real implementation, you would call a delete payment API
-    this.presentToast('Delete functionality not yet available in backend', 'medium');
+    try {
+      if (!this.isUuid(record.id)) {
+        this.presentToast('Cannot delete: missing payment record id', 'danger');
+        return;
+      }
+      await this.rentService.deletePayment(record.id);
+      await this.loadRentRecords();
+      this.presentToast('Payment deleted', 'success');
+    } catch (error) {
+      console.error('Error deleting payment:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete payment';
+      this.presentToast(errorMessage, 'danger');
+    }
   }
 
   private parseProperty(prop: string): { propertyNumber: string; unitNumber: string } {
@@ -622,6 +636,10 @@ export class RentTrackingPage implements OnInit {
     const year = base.getFullYear();
     const month = String(base.getMonth() + 1).padStart(2, '0');
     return `${year}-${month}`;
+  }
+
+  private isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || '');
   }
 
   private async presentToast(message: string, color: 'success' | 'danger' | 'primary' | 'medium') {

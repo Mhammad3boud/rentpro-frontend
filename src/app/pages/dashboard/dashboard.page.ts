@@ -11,7 +11,8 @@ import { ActivityService, ActivityItem } from '../../services/activity.service';
 import { UserService } from '../../services/user.service';
 import { UserProfileService } from 'src/app/services/user-profile.service';
 import { LeaseService } from '../../services/lease.service';
-import { Lease } from '../../models';
+import { Lease, RiskLevel } from '../../models';
+import { AiPredictionService, PredictionDashboardSummary } from '../../services/ai-prediction.service';
 
 interface RecentActivity {
   id: string;
@@ -72,6 +73,7 @@ export class DashboardPage implements OnInit {
   private dashboard?: OwnerDashboardResponse;
   tenantDashboard?: TenantDashboardResponse;
   tenantLeases: Lease[] = [];
+  predictionSummary: PredictionDashboardSummary | null = null;
 
   constructor(
     private router: Router,
@@ -83,7 +85,8 @@ export class DashboardPage implements OnInit {
     private activityService: ActivityService,
     private userService: UserService,
     private userProfileService: UserProfileService,
-    private leaseService: LeaseService
+    private leaseService: LeaseService,
+    private aiPredictionService: AiPredictionService
 
   ) {
   }
@@ -119,6 +122,7 @@ export class DashboardPage implements OnInit {
     this.loadTenantLeaseDetails();
     this.loadUnreadCount();
     this.loadRecentActivities();
+    this.loadPredictionSummary();
   }
 
   ionViewWillEnter() {
@@ -203,11 +207,14 @@ export class DashboardPage implements OnInit {
             this.userName = leaseTenantName;
           }
         }
-        this.activeContracts = this.tenantLeases.length;
+        this.activeContracts = this.activeTenantLeases.length;
         const propertyIds = this.tenantLeases
           .map(lease => lease.property?.propertyId || lease.propertyId)
           .filter((id): id is string => !!id);
         this.totalProperties = new Set(propertyIds).size;
+        if (this.tenantDashboard) {
+          this.buildTenantReminders(this.tenantDashboard);
+        }
       },
       error: () => {
         this.tenantLeases = [];
@@ -336,6 +343,11 @@ export class DashboardPage implements OnInit {
 
   private buildTenantReminders(dashboard: TenantDashboardResponse) {
     const reminders: UpcomingReminder[] = [];
+    if (!this.hasActiveTenantLease) {
+      this.upcomingReminders = reminders;
+      this.showAllUpcomingReminders = false;
+      return;
+    }
 
     if (dashboard.overdueCount && Number(dashboard.overdueCount) > 0) {
       reminders.push({
@@ -419,14 +431,85 @@ export class DashboardPage implements OnInit {
     this.loadDashboard();
     this.loadUnreadCount();
     this.loadRecentActivities();
+    this.loadPredictionSummary(true);
     setTimeout(() => event.target.complete(), 600);
+  }
+
+  loadPredictionSummary(forceRefresh = false) {
+    const role: 'OWNER' | 'TENANT' = this.isTenant ? 'TENANT' : 'OWNER';
+    this.aiPredictionService.getDashboardSummary(role, forceRefresh).subscribe({
+      next: (summary) => {
+        this.predictionSummary = summary;
+      },
+      error: () => {
+        this.predictionSummary = null;
+      }
+    });
+  }
+
+  openAnalytics() {
+    this.router.navigate(['/tabs/analytics']);
+  }
+
+  predictionRiskColor(level: RiskLevel): 'success' | 'warning' | 'danger' {
+    if (level === 'HIGH') {
+      return 'danger';
+    }
+    if (level === 'MEDIUM') {
+      return 'warning';
+    }
+    return 'success';
+  }
+
+  predictionScorePercent(score: number): number {
+    const raw = Number(score ?? 0);
+    const normalized = raw > 1 ? raw / 100 : raw;
+    return Math.max(0, Math.min(100, Math.round(normalized * 100)));
   }
 
   openSettings() { this.router.navigate(['/settings']); }
   openNotifications() { this.router.navigate(['/notifications']); }
   openAddProperty() { this.router.navigate([this.isTenant ? '/tabs/contracts' : '/tabs/assets']); }
-  openAddTenant() { this.router.navigate([this.isTenant ? '/tabs/maintenance' : '/tabs/tenants']); }
+  async openAddTenant() {
+    if (this.isTenant && !this.hasActiveTenantLease) {
+      const toast = await this.toastController.create({
+        message: 'Your lease is terminated or expired. New maintenance requests are disabled.',
+        duration: 2800,
+        position: 'top',
+        color: 'warning'
+      });
+      await toast.present();
+      return;
+    }
+    this.router.navigate([this.isTenant ? '/tabs/maintenance' : '/tabs/tenants']);
+  }
   openRecordPayment() { this.router.navigate(['/tabs/rent-tracking']); }
+
+  get activeTenantLeases(): Lease[] {
+    return this.tenantLeases.filter(lease => (lease.leaseStatus || '').toUpperCase() === 'ACTIVE');
+  }
+
+  get formerTenantLeases(): Lease[] {
+    return this.tenantLeases.filter(lease => {
+      const status = (lease.leaseStatus || '').toUpperCase();
+      return status === 'TERMINATED' || status === 'EXPIRED';
+    });
+  }
+
+  get hasActiveTenantLease(): boolean {
+    return this.activeTenantLeases.length > 0;
+  }
+
+  leaseStatusColor(status?: string): 'success' | 'warning' | 'medium' {
+    const normalized = (status || '').toUpperCase();
+    if (normalized === 'ACTIVE') {
+      return 'success';
+    }
+    if (normalized === 'EXPIRED') {
+      return 'warning';
+    }
+    return 'medium';
+  }
 
   onActivityClick(activity: RecentActivity) {
     switch (activity.type) {

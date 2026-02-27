@@ -1,3 +1,13 @@
 <ion-app>
   <ion-router-outlet></ion-router-outlet>
+
+  <div class="force-update-overlay" *ngIf="forceUpdateRequired">
+    <div class="force-update-card">
+      <h2>Update Required</h2>
+      <p>{{ updateMessage }}</p>
+      <ion-button expand="block" color="primary" (click)="openUpdatePage()">
+        Update Now
+      </ion-button>
+    </div>
+  </div>
 </ion-app>
