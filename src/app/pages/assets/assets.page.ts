@@ -61,6 +61,7 @@ export class AssetsPage implements OnInit {
 
 
   assets: Asset[] = [];
+  isLoading = false;
 
   filteredAssets: Asset[] = [];
 
@@ -108,6 +109,7 @@ export class AssetsPage implements OnInit {
   // ---------------- backend loading ----------------
 
   private loadAssets() {
+    this.isLoading = true;
 
     forkJoin({
       rows: this.propertiesService.list(),
@@ -128,10 +130,14 @@ export class AssetsPage implements OnInit {
 
         console.log('Loaded properties:', rows.length);
         console.log('PropertyById map size:', this.propertyById.size);
+        this.isLoading = false;
 
       },
 
-      error: () => this.presentToast('Failed to load properties', 'danger'),
+      error: () => {
+        this.isLoading = false;
+        this.presentToast('Failed to load properties', 'danger');
+      },
 
     });
 
@@ -528,6 +534,7 @@ private mapPropertyToAsset(
 
 
 
+    this.isLoading = true;
     this.propertiesService.list().subscribe({
 
       next: (rows) => {
@@ -546,15 +553,18 @@ private mapPropertyToAsset(
 
             console.log('Refreshed properties:', rows.length);
 
+            this.isLoading = false;
             event.target.complete();
           },
           error: () => {
+            this.isLoading = false;
             this.presentToast('Refresh failed', 'danger');
             event.target.complete();
           }
         });
       },
       error: () => {
+        this.isLoading = false;
         this.presentToast('Refresh failed', 'danger');
         event.target.complete();
       }

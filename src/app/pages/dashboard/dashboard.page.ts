@@ -43,6 +43,11 @@ interface UpcomingReminder {
 })
 export class DashboardPage implements OnInit {
   private readonly listLimit = 5;
+  profileLoading = true;
+  dashboardLoading = true;
+  activitiesLoading = true;
+  tenantLeasesLoading = false;
+  predictionLoading = false;
   userName: string = 'User';
   role: string = 'Property Owner';
   isTenant = false;
@@ -92,6 +97,7 @@ export class DashboardPage implements OnInit {
   }
 
   async loadUserProfile() {
+    this.profileLoading = true;
     try {
       await this.userService.loadUserProfile();
       // Update local variables with loaded profile
@@ -113,6 +119,8 @@ export class DashboardPage implements OnInit {
       // Fallback values
       this.userName = 'User';
       this.role = 'Property Owner';
+    } finally {
+      this.profileLoading = false;
     }
   }
 
@@ -135,6 +143,7 @@ export class DashboardPage implements OnInit {
   }
 
   loadDashboard() {
+    this.dashboardLoading = true;
     if (this.isTenant) {
       this.dashboardService.getTenantDashboard().subscribe({
         next: (res) => {
@@ -143,6 +152,7 @@ export class DashboardPage implements OnInit {
           this.pendingMaintenance = Number(res.maintenanceCount ?? 0);
           this.totalTenants = 0;
           this.buildTenantReminders(res);
+          this.dashboardLoading = false;
         },
         error: async (err: any) => {
           console.error('Tenant dashboard loading error:', err);
@@ -153,6 +163,7 @@ export class DashboardPage implements OnInit {
             color: 'danger'
           });
           await toast.present();
+          this.dashboardLoading = false;
         }
       });
       return;
@@ -173,6 +184,7 @@ export class DashboardPage implements OnInit {
 
         // Build reminders from dashboard data
         this.buildReminders(res);
+        this.dashboardLoading = false;
       },
       error: async (err: any) => {
         console.error('Dashboard loading error:', err);
@@ -189,6 +201,7 @@ export class DashboardPage implements OnInit {
           color: 'danger'
         });
         await toast.present();
+        this.dashboardLoading = false;
       }
     });
   }
@@ -197,6 +210,7 @@ export class DashboardPage implements OnInit {
     if (!this.isTenant) {
       return;
     }
+    this.tenantLeasesLoading = true;
 
     this.leaseService.getTenantLeases().subscribe({
       next: (leases) => {
@@ -215,11 +229,13 @@ export class DashboardPage implements OnInit {
         if (this.tenantDashboard) {
           this.buildTenantReminders(this.tenantDashboard);
         }
+        this.tenantLeasesLoading = false;
       },
       error: () => {
         this.tenantLeases = [];
         this.activeContracts = 0;
         this.totalProperties = 0;
+        this.tenantLeasesLoading = false;
       }
     });
   }
@@ -229,15 +245,18 @@ export class DashboardPage implements OnInit {
   }
 
   loadRecentActivities() {
+    this.activitiesLoading = true;
     this.activityService.getRecentActivities().subscribe({
       next: (activities: ActivityItem[]) => {
         // Convert activities to recent activities format
         this.recentActivities = activities.map(a => this.activityToRecentActivity(a));
         this.showAllRecentActivities = false;
+        this.activitiesLoading = false;
       },
       error: () => {
         this.recentActivities = [];
         this.showAllRecentActivities = false;
+        this.activitiesLoading = false;
       }
     });
   }
@@ -436,13 +455,16 @@ export class DashboardPage implements OnInit {
   }
 
   loadPredictionSummary(forceRefresh = false) {
+    this.predictionLoading = true;
     const role: 'OWNER' | 'TENANT' = this.isTenant ? 'TENANT' : 'OWNER';
     this.aiPredictionService.getDashboardSummary(role, forceRefresh).subscribe({
       next: (summary) => {
         this.predictionSummary = summary;
+        this.predictionLoading = false;
       },
       error: () => {
         this.predictionSummary = null;
+        this.predictionLoading = false;
       }
     });
   }

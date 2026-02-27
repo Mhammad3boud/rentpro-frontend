@@ -4,6 +4,7 @@ import { AlertController } from '@ionic/angular';
 import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service'; 
 import { SessionWarmupService } from '../../services/session-warmup.service';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-login',
@@ -14,6 +15,8 @@ import { SessionWarmupService } from '../../services/session-warmup.service';
 export class LoginPage implements OnInit {
   email = '';
   password = '';
+  showPassword = false;
+  isLoading = false;
   rememberMe = true; // Default to true for better UX - token persists across page reloads
 
   constructor(
@@ -27,7 +30,16 @@ export class LoginPage implements OnInit {
   ngOnInit() {}
 
   async login() {
-    this.authService.login(this.email, this.password, this.rememberMe).subscribe({
+    if (this.isLoading) {
+      return;
+    }
+
+    this.isLoading = true;
+    this.authService.login(this.email, this.password, this.rememberMe).pipe(
+      finalize(() => {
+        this.isLoading = false;
+      })
+    ).subscribe({
       next: async () => {
         // Load user profile after successful login
         await this.userService.loadUserProfile();
@@ -47,5 +59,9 @@ export class LoginPage implements OnInit {
 
   goToRegister() {
     this.router.navigate(['/register']);
+  }
+
+  togglePasswordVisibility() {
+    this.showPassword = !this.showPassword;
   }
 }

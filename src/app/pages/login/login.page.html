@@ -13,8 +13,11 @@
 
       <ion-item class="input-item">
         <ion-icon slot="start" name="lock-closed-outline"></ion-icon>
-        <ion-input type="password" placeholder="Password" [(ngModel)]="password" name="password" required>
+        <ion-input [type]="showPassword ? 'text' : 'password'" placeholder="Password" [(ngModel)]="password" name="password" required>
         </ion-input>
+        <ion-button slot="end" fill="clear" (click)="togglePasswordVisibility()" aria-label="Toggle password visibility">
+          <ion-icon [name]="showPassword ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+        </ion-button>
       </ion-item>
 
       <div class="options">
@@ -25,8 +28,12 @@
         <a href="#" class="forgot">Forgot Password?</a>
       </div>
 
-      <ion-button expand="block" class="login-btn" (click)="login()">
-        Login
+      <ion-button expand="block" class="login-btn" (click)="login()" [disabled]="!email || !password || isLoading">
+        <ng-container *ngIf="!isLoading; else loadingTpl">Login</ng-container>
+        <ng-template #loadingTpl>
+          <ion-spinner name="crescent"></ion-spinner>
+          <span style="margin-left: 8px;">Logging in...</span>
+        </ng-template>
       </ion-button>
 
       <div class="register-link">
