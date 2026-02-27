@@ -41,7 +41,26 @@
     </div>
   </div>
 
-  <ion-grid>
+  <ion-grid *ngIf="isLoading">
+    <ion-row>
+      <ion-col size="12" size-md="4" *ngFor="let i of [1,2,3]">
+        <ion-card>
+          <ion-card-header>
+            <ion-skeleton-text [animated]="true" style="width: 30%; height: 18px; margin-left: auto;"></ion-skeleton-text>
+            <ion-skeleton-text [animated]="true" style="width: 70%; height: 20px;"></ion-skeleton-text>
+            <ion-skeleton-text [animated]="true" style="width: 55%;"></ion-skeleton-text>
+          </ion-card-header>
+          <ion-card-content>
+            <ion-skeleton-text [animated]="true"></ion-skeleton-text>
+            <ion-skeleton-text [animated]="true" style="width: 90%;"></ion-skeleton-text>
+            <ion-skeleton-text [animated]="true" style="width: 80%;"></ion-skeleton-text>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+
+  <ion-grid *ngIf="!isLoading">
     <ion-row>
       <ion-col size="12" size-md="4" *ngFor="let tenant of filteredTenants">
         <ion-card>
@@ -71,7 +90,7 @@
             <p><strong>Lease Start:</strong> {{ tenant.leaseStart ? (tenant.leaseStart | date:'mediumDate') : 'N/A' }}</p>
             <p><strong>Lease End:</strong> {{ tenant.leaseEnd ? (tenant.leaseEnd | date:'mediumDate') : 'N/A' }}</p>
             <p><strong>Property:</strong> {{ tenant.propertyRef || 'Not assigned' }}</p>
-            <p><strong>Emergency:</strong> {{ tenant.emergencyName }} {{ tenant.emergencyPhone ? '(' + tenant.emergencyPhone + ')' : '' }}</p>
+            <p><strong>Emergency:</strong> {{ getEmergencyDisplay(tenant) }}</p>
 
             <div class="card-actions">
               <ion-button size="small" fill="outline" color="medium" (click)="editTenant(tenant)">

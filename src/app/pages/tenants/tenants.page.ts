@@ -197,4 +197,20 @@ export class TenantsPage implements OnInit {
     if (!normalized) return 'Unknown';
     return normalized.charAt(0) + normalized.slice(1).toLowerCase();
   }
+
+  getEmergencyDisplay(tenant: TenantDto): string {
+    const name = (tenant.emergencyName || '').trim();
+    const phone = (tenant.emergencyPhone || '').trim();
+
+    if (name && phone) {
+      return `${name} - ${phone}`;
+    }
+    if (name) {
+      return name;
+    }
+    if (phone) {
+      return phone;
+    }
+    return 'Not provided';
+  }
 }
